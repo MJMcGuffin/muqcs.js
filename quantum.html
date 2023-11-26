@@ -1,0 +1,1431 @@
+
+<html>
+<body>
+<script>
+
+// CONVENTIONs
+//
+// Assume that, in a quantum circuit with n qubits, the qubits are numbered
+// from top to bottom as 0 to (n-1), respectively, and furthermore that the
+// top qubit is the least significant bit (LSB), and the bottom is the most
+// significant bit (MSB).  For example, if there are 3 qubits labeled q0, q1, q2,
+// from top to bottom, these might store (q2,q1,q0) = (0,1,1) to encode 3
+// or (q2,q1,q0) = (1,0,0) to encode 4.  Given these assumptions, there are
+// two ways to simulate the circuit, described below, that correspond to
+// different matrices and different orderings for tensor products.
+// Sometimes the terms "big-endian" or "little-endian" are used to refer
+// to choices related to this, but I haven't found clear definitions
+// or consistent usage of these terms.
+//
+// Common software convention:
+// - Tensor products are done in order of decreasing bit significance.
+//   https://quantumcomputing.stackexchange.com/questions/8244/big-endian-vs-little-endian-in-qiskit
+//   seems to confirm that Qiskit works this way.
+// - In a 2-qubit circuit, if we have a 2-qubit gate where q0 is a control
+//   bit and q1 has a conditionally applied operation with 2x2 matrix [a b; c d],
+//   the 4x4 matrix for the gate would be [1 0 0 0; 0 a 0 b; 0 0 1 0; 0 c 0 d],
+//   which is endian-reversed with how 4x4 matrices are usually presented in
+//   textbooks on quantum computing.
+//   See https://qiskit.org/documentation/tutorials/circuits/3_summary_of_quantum_operations.html#Basis-vector-ordering-in-Qiskit
+// - In a 3-qubit circuit, the state vector would contain 8 elements,
+//   and the 2nd of these would correspond to (q2,q1,q0) = (0,0,1),
+//   which is more natural for reading.  This appears to match the
+//   presentation of output from Quirk and IBM Quantum Composer.
+//   Quirk's doc/README.md file ( https://github.com/Strilanc/Quirk/blob/master/doc/README.md )
+//   states "Kets are big-endian. |00101> is 5, not 20",
+//   and https://algassert.com/post/1707 further discusses this.
+//
+// Textbook convention:
+// - Tensor products are done in order of increasing bit significance.
+//   This seems to match when
+//   https://qiskit.org/documentation/tutorials/circuits/3_summary_of_quantum_operations.html#Basis-vector-ordering-in-Qiskit
+//   states "Within the physics community, the qubits of a multi-qubit systems
+//   are typically ordered with the first qubit on the left-most side of the
+//   tensor product and the last qubit on the right-most side."
+// - The same 4x4 matrix mentioned earlier, with q0 acting as a control bit,
+//   would now be [1 0 0 0; 0 1 0 0; 0 0 a b; 0 0 c d] which is how they
+//   are usually presented in textbooks on quantum computing.
+// - In a 3-qubit circuit, the state vector would contain 8 elements, and
+//   the 2nd of these would correspond to (q0,q1,q2) = (0,0,1).
+//   Such a vector would have to be endian-reversed for more natural reading.
+//
+// We could just implement one of the above conventions in the code,
+// but I found it instructive to try to implement both and have a global flag
+// to switch between the two.
+//
+let usingTextbookConvention = false;
+
+
+
+class Util {
+    static assert( condition, message ) {
+        if ( ! condition ) {
+            console.log( "ASSERTION ERROR: " + message );
+            console.trace(); // causes line numbers to be printed
+        }
+    }
+    // Let n be a power of 2. This returns the reverse of i in binary, with respect to n.
+    // For example, if n===16, the reverse of 1 is 8, the reverse of 2 is 4, the reverse of 3 is 12,
+    // and the reverse of 0, 6, 9, and 15 leaves each of those numbers unchanged.
+    static reverseEndianness(i,n) {
+        Util.assert( 0<=i && i<n && 1<=n, `Util.reverseEndianness(): unexpected condition, i===${i}, n===${n}`);
+        let result = 0;
+        let bit = 1;
+        let reversed_bit = n >> 1;
+        while ( bit < n ) {
+            if ( i & bit )
+                result |= reversed_bit;
+            bit <<= 1;
+            reversed_bit >>= 1;
+        }
+        Util.assert( bit === n/*this should happen because n should be a power of 2*/, `Util.reverseEndianness(): unexpected condition, n===${n}`);
+        return result;
+    }
+}
+
+class StringUtil {
+    static numToString(x) {
+        let s1 = x.toString();
+        let s2 = x.toFixed(3);
+        if ( s1.length < s2.length ) return s1;
+        else return s2;
+    }
+    // returns the given string, reversed
+    static reverseString(s) {
+        let r = "";
+        for ( let j = s.length-1; j >= 0; j-- )
+            r += s[j];
+        return r;
+    }
+    // returns s repeated n times
+    static repeatString(s,n) {
+        let r = "";
+        for ( let j = 0; j < n; j++ )
+            r += s;
+        return r;
+    }
+    // returns number of times the character c occurs in string s
+    static countInString(s,c) {
+        let r = 0;
+        for ( let j = s.length-1; j >= 0; j-- )
+            if ( s[j]===c )
+                r ++;
+        return r;
+    }
+    // Returns a single multiline string containing the given strings
+    // concatenated horizontally and centered vertically.
+    // Assumes that none of the given strings are jagged,
+    // i.e., assumes that for each given string, all its lines are the same length.
+    //
+    // For example, calling with arguments ("x = ", "[0,0,1,1]", " * ", "[0]\n[1]\n[0]\n[1]")
+    // causes a return of the string
+    //    "                [0]\n"
+    //   +"x = [0,0,1,1] * [1]\n"
+    //   +"                [0]\n"
+    //   +"                [1]"
+    //
+    static concatenateMultilineStrings(...args) {
+        let w = []; // widths of given strings
+        let h = []; // heights of given strings
+        let max_height = 0;
+        for (let s of args) {
+            let s2 = s.split('\n');
+            h.push( s2.length );
+            if ( s2.length > max_height ) max_height = s2.length;
+            w.push( s2[0].length );
+        }
+        let returnValue = "";
+        for ( let row = 0; row < max_height; ++row ) {
+            for (let stringIndex = 0; stringIndex < args.length; stringIndex ++ ) {
+                let s = args[ stringIndex ];
+                let rowWithinString = Math.round( row - max_height/2 + h[ stringIndex ]/2 );
+                if ( rowWithinString < 0 || rowWithinString >= h[ stringIndex ] ) {
+                    // use spaces
+                    returnValue += StringUtil.repeatString(' ', w[ stringIndex ] );
+                }
+                else {
+                    //console.log("rowWithinString = " + rowWithinString + ", s =" + s + "END" );
+                    returnValue += s.split('\n')[rowWithinString];
+                }
+            }
+            if ( row < max_height-1 )
+                returnValue += '\n';
+        }
+        return returnValue;
+    }
+}
+
+// Stores a complex number, with real and imaginary components.
+class Complex {
+    constructor( re = 0, im = 0 ) {
+        this._r = re;
+        this._i = im;
+    }
+    toString() {
+        if ( this._r === 0 ) {
+            if ( this._i === 0 ) {
+               return "0";
+            }
+            else {
+               return StringUtil.numToString(this._i) + "i";
+            }
+        }
+        else {
+            if ( this._i === 0 ) {
+               return StringUtil.numToString(this._r);
+            }
+            else {
+               let rs = StringUtil.numToString(this._r);
+               let is = StringUtil.numToString(this._i) + "i";
+               return is[0]==='-' ? ( rs+is ) : ( rs + "+" + is );
+            }
+        }
+    }
+    // returns a deep copy of the complex number
+    copy() {
+        return new Complex( this._r, this._i );
+    }
+
+    // Returns the sum of the two given complex numbers.
+    static sum(c1,c2) {
+        return new Complex( c1._r+c2._r, c1._i+c2._i );
+    }
+    // Returns the difference of the two given complex numbers.
+    static diff(c1,c2) {
+        return new Complex( c1._r-c2._r, c1._i-c2._i );
+    }
+    // Returns the product of the two given complex numbers.
+    static mult(c1,c2) {
+        return new Complex( c1._r*c2._r - c1._i*c2._i, c1._r*c2._i + c1._i*c2._r );
+    }
+}
+
+// This is a complex matrix, i.e., a matrix containing complex numbers.
+// To save on overhead, the complex numbers are stored as consecutive pairs of numbers in a floating point number array.
+class CMatrix {
+    // allocates space in memory containing zeros
+    allocate( numRows, numCols ) {
+        this._rows = numRows;
+        this._cols = numCols;
+        this._m = new Float32Array(
+            numRows * numCols
+            * 2 // because we're storing a real and imaginary component for each matrix element
+        );
+    }
+    constructor( numRows, numCols ) {
+        Util.assert( numRows > 0 && numCols > 0, "CMatrix.constructor(): invalid size requested" );
+        this.allocate( numRows, numCols );
+    }
+    // Gets the value in a cell.
+    // row and column indices are zero-based.
+    // returns a complex number.
+    get(row,col) {
+        let j = ( row * this._cols + col )*2;
+        return new Complex( this._m[j], this._m[j+1] );
+    }
+    // Sets the value in a cell.
+    // row and column indices are zero-based.
+    // The value passed in can be a (real) number or a complex number.
+    set(row,col,value) {
+        let j = ( row * this._cols + col )*2;
+        if ( typeof(value)==='number' ) {
+            this._m[j  ] = value; // real component
+            this._m[j+1] = 0;
+        }
+        else if ( typeof(value)==='object' && value instanceof Complex ) {
+            this._m[j  ] = value._r;
+            this._m[j+1] = value._i;
+        }
+        else Util.assert(false,"CMatrix.set(): unknown type");
+    }
+    // Returns a deep copy of the matrix
+    copy() {
+        let M = new CMatrix( this._rows, this._cols );
+        M._m.set( this._m ); // this copies the contents of one to the other
+        return M;
+    }
+    // Returns the transpose of the matrix
+    transpose() {
+        let M = new CMatrix( this._cols, this._rows );
+        for ( let r = 0; r < this._rows; ++r ) {
+            for ( let c = 0; c < this._cols; ++c ) {
+                M.set( c, r, this.get(r,c) );
+            }
+        }
+        return M;
+    }
+    reverseEndianness( actuallyReverseThings=true ) { // should only be called on a row vector, column vector, or matrix whose dimensions are powers of 2
+        if ( ! actuallyReverseThings )
+            return this; // never mind
+        let M = new CMatrix( this._rows, this._cols );
+        for ( let r = 0; r < this._rows; ++r ) {
+            let r2 = Util.reverseEndianness(r,this._rows);
+            for ( let c = 0; c < this._cols; ++c ) {
+                let c2 = Util.reverseEndianness(c,this._cols);
+                M.set( r2, c2, this.get(r,c) );
+            }
+        }
+        return M;
+    }
+    // Returns a multiline string, e.g.,
+    // a 4x2 matrix might yield "[0,1+2i]\n[1,1   ]\n[0,2i  ]\n[1,0   ]"
+    toString( withBinaryStringPrefixes = false, suppressZeros=true/*makes large binary matrices easier to read*/, charToReplaceSuppressedZero='_' ) {
+        let arrayOfPrefixStrings = [];
+        if ( withBinaryStringPrefixes ) {
+            let targetWidth = Math.ceil( Math.log2(this._rows) );
+            for ( let r = 0; r < this._rows; ++r ) {
+                let binaryString = r.toString(2);
+                binaryString = StringUtil.repeatString('0',targetWidth-binaryString.length) + binaryString; // pad with '0's
+                if ( usingTextbookConvention )
+                    binaryString = '|' + StringUtil.reverseString( binaryString ) + '>';
+                else
+                    binaryString = '|' + binaryString + '>';
+                arrayOfPrefixStrings.push( binaryString );
+            }
+        }
+        let arrayOfArraysOfStrings = [];
+        for ( let r = 0; r < this._rows; ++r ) {
+            arrayOfArraysOfStrings.push( [] );
+            for ( let c = 0; c < this._cols; ++c ) {
+                arrayOfArraysOfStrings[r].push( this.get(r,c).toString() );
+            }
+        }
+        let maxMaxWidth = 0;
+        for ( let c = 0; c < this._cols; ++c ) {
+            let maxWidth = 0;
+            for ( let r = 0; r < this._rows; ++r ) {
+                let w = arrayOfArraysOfStrings[r][c].length;
+                if ( w > maxWidth ) {
+                    maxWidth = w;
+                    if ( maxWidth > maxMaxWidth ) maxMaxWidth = maxWidth;
+                }
+            }
+            // now we know the max width for this column, so we can pad with spaces
+            for ( let r = 0; r < this._rows; ++r ) {
+                let w = arrayOfArraysOfStrings[r][c].length;
+                arrayOfArraysOfStrings[r][c] += StringUtil.repeatString(' ',maxWidth-w);
+            }
+        }
+        // now we have finished padding all the strings with spaces
+        // so we can build the multiline string
+        let returnValue = '';
+        for ( let r = 0; r < this._rows; ++r ) {
+            if ( withBinaryStringPrefixes )
+                returnValue += arrayOfPrefixStrings[r];
+            returnValue += '[';
+            for ( let c = 0; c < this._cols; ++c ) {
+                if ( suppressZeros && maxMaxWidth===1 && arrayOfArraysOfStrings[r][c]==='0' )
+                    returnValue += charToReplaceSuppressedZero;
+                else
+                    returnValue += arrayOfArraysOfStrings[r][c];
+                if ( c < this._cols-1 )
+                    returnValue += ',';
+            }
+            returnValue += ']';
+            if ( r < this._rows-1 )
+                returnValue += '\n';
+        }
+        return returnValue;
+    }
+
+
+    // Returns the sum of the two given matrices.
+    static sum(a,b) {
+        Util.assert(a instanceof CMatrix && b instanceof CMatrix,"CMatrix.sum(): wrong type");
+        Util.assert(a._rows === b._rows && a._cols === b._cols, "CMatrix.sum(): incompatible dimensions" );
+        let M = a.copy();
+        for ( let j = M._m.length-1; j >= 0; j-- )
+            M._m[j] += b._m[j];
+        return M;
+    }
+
+    // Returns the difference of the two given matrices.
+    static diff(a,b) {
+        Util.assert(a instanceof CMatrix && b instanceof CMatrix,"CMatrix.diff(): wrong type");
+        Util.assert(a._rows === b._rows && a._cols === b._cols, "CMatrix.diff(): incompatible dimensions" );
+        let M = a.copy();
+        for ( let j = M._m.length-1; j >= 0; j-- )
+            M._m[j] -= b._m[j];
+        return M;
+    }
+    // Returns the product of the two given matrices,
+    // or of a matrix with a scalar.
+    static mult( a/*matrix*/, b/*matrix or scalar*/ ) {
+        Util.assert(a instanceof CMatrix,"CMatrix.mult(): wrong type");
+
+        if ( typeof(b)==='number' ) {
+            let M = a.copy();
+            for ( let j = M._m.length-1; j >= 0; j-- )
+                M._m[j] *= b;
+            return M;
+        }
+        else if ( b instanceof CMatrix ) {
+            Util.assert(a._cols === b._rows, "CMatrix.mult(): matrices have incompatible dimensions" );
+            let M = new CMatrix(a._rows,b._cols);
+            for ( let r = 0; r < M._rows; r++ ) {
+                for ( let c = 0; c < M._cols; c++ ) {
+                    let dotProduct = new Complex();
+                    for ( let k = 0; k < a._cols; ++k ) {
+                        // TODO this line creates 4 instances of Complex that ultimately aren't
+                        // needed; this could be optimized by expanding and inlining the math ops.
+                        dotProduct = Complex.sum(dotProduct,Complex.mult(a.get(r,k),b.get(k,c)));
+                    }
+                    M.set(r,c,dotProduct);
+                }
+            }
+            return M;
+        }
+        else if ( b instanceof Complex ) {
+            Util.assert(false,"CMatrix.mult() with complex number not yet implemented");
+        }
+        else Util.assert(false,"CMatrix.mult(): unknown type");
+    }
+    // The kronecker product, or tensor product, of two matrices.
+    static tensor(a,b,isReversed=false) {
+        Util.assert(a instanceof CMatrix && b instanceof CMatrix,"CMatrix.tensor(): wrong type");
+        if ( isReversed ) {
+            let tmp = a;
+            a = b;
+            b = tmp;
+        }
+        let numRows = a._rows * b._rows;
+        let numCols = a._cols * b._cols;
+        let M = new CMatrix(numRows,numCols);
+        for ( let ar = 0; ar < a._rows; ar++ ) {
+            for ( let br = 0; br < b._rows; br++ ) {
+                for ( let ac = 0; ac < a._cols; ac++ ) {
+                    for ( let bc = 0; bc < b._cols; bc++ ) {
+                        M.set(
+                            ar*b._rows + br,
+                            ac*b._cols + bc,
+                            Complex.mult( a.get(ar,ac), b.get(br,bc) )
+                        );
+                    }
+                }
+            }
+        }
+        return M;
+    }
+    // Imagine you want to form the product of many matrices m1 x m2 x ... mN
+    // You can obtain this product by calling the below routine with argument [m1,m2,...,mN]
+    //
+    // Since matrix multiplication is associative, we have a choice of computing the product
+    // starting with whatever matrices we like.
+    // It turns out to be more efficient to compute the product of smaller matrices first.
+    // So, this routine searches through the given list for the consecutive pair
+    // of smallest matrices, replaces them with their product, and repeats.
+    static naryMult( list ) {
+        Util.assert( list.length>0 && list[0] instanceof CMatrix, "CMatrix.naryMult(): invalid input" );
+        // let totalCost = 0;
+        while ( list.length > 1 ) {
+            let lowestCost = 0;
+            let indexForLowestCost = -1;
+            for ( let i = 0; i < list.length-1; ++i ) {
+                // compute the cost of computing the product of the ith and (i+1)th matrices
+                let cost = list[i]._rows * list[i]._cols * list[i+1]._cols;
+                if ( indexForLowestCost < 0 || cost < lowestCost ) {
+                    lowestCost = cost;
+                    indexForLowestCost = i;
+                }
+            }
+            // Replace the lowest-cost pair of matrices with a single matrix
+            let a = list[ indexForLowestCost ];
+            let b = list[ indexForLowestCost + 1 ];
+            // replace the ith and (i+1)th matrices with their product
+            list.splice( indexForLowestCost, 2, CMatrix.mult(a,b) );
+            // totalCost += lowestCost;
+        }
+        // console.log("totalCost: " + totalCost);
+        return list[0];
+    }
+    // Imagine you want to form the tensor product of many matrices m1 x m2 x ... mN
+    // You can obtain this product by calling the below routine with argument [m1,m2,...,mN]
+    //
+    // Since the tensor product is associative, we have a choice of computing the product
+    // starting with whatever matrices we like.
+    // It turns out to be more efficient to compute the product of smaller matrices first.
+    // So, this routine searches through the given list for the consecutive pair
+    // of smallest matrices, replaces them with their product, and repeats.
+    static naryTensor( list, isReversed=false ) {
+        Util.assert( list.length>0 && list[0] instanceof CMatrix, "CMatrix.naryTensor(): invalid input" );
+        if ( isReversed ) {
+            list.reverse();
+        }
+        // let totalCost = 0;
+        while ( list.length > 1 ) {
+            let lowestCost = 0;
+            let indexForLowestCost = -1;
+            for ( let i = 0; i < list.length-1; ++i ) {
+                // compute the cost of computing the product of the ith and (i+1)th matrices
+                let cost = list[i]._rows * list[i]._cols * list[i+1]._rows * list[i+1]._cols;
+                if ( indexForLowestCost < 0 || cost < lowestCost ) {
+                    lowestCost = cost;
+                    indexForLowestCost = i;
+                }
+            }
+            // Replace the lowest-cost pair of matrices with a single matrix
+            let a = list[ indexForLowestCost ];
+            let b = list[ indexForLowestCost + 1 ];
+            // replace the ith and (i+1)th matrices with their product
+            list.splice( indexForLowestCost, 2, CMatrix.tensor(a,b) );
+            // totalCost += lowestCost;
+        }
+        // console.log("totalCost: " + totalCost);
+        return list[0];
+    }
+    // returns true if the given matrices are approximately equal, within the given tolerance
+    static approximatelyEqual(a,b,tolerance=0.01,printMessage=true) {
+        Util.assert(a instanceof CMatrix && b instanceof CMatrix,"CMatrix.approximatelyEqual(): wrong type");
+        Util.assert(a._rows === b._rows && a._cols === b._cols, "CMatrix.approximatelyEqual(): incompatible dimensions" );
+        for ( let j = a._m.length-1; j >= 0; j-- ) {
+            let delta = Math.abs( a._m[j] - b._m[j] );
+            if ( delta > tolerance ) {
+                if ( printMessage ) {
+                    console.log(`CMatrix.approximatelyEqual(): difference of ${delta} found`);
+                }
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+    // Creates and returns a matrix by copying the contents of the given array of arrays,
+    // which can contain numbers or complex numbers.
+    // Assumes that the given array is not jagged.
+    static create( arrayOfArrays ) {
+        let numRows = arrayOfArrays.length;
+        let numCols = arrayOfArrays[0].length;
+        let M = new CMatrix( numRows, numCols );
+        for ( let j = 0; j < numRows; ++j ) {
+            for ( let k = 0; k < numCols; ++k ) {
+                M.set( j, k, arrayOfArrays[j][k] );
+            }
+        }
+        return M;
+    }
+    // Creates a nx1 size matrix
+    static createColVector( array ) {
+        return this.create( array.map( x => [ x ] ) );
+    }
+    // Creates a 1xn size matrix
+    static createRowVector( array ) {
+        return this.create( [ array ] );
+    }
+    // Returns an identity matrix of the given size
+    static identity( numRows ) {
+        let M = new CMatrix( numRows, numRows );
+        for ( let k = 0; k < numRows; ++k )
+            M.set(k,k,1);
+        return M;
+    }
+    // Returns a matrix for swapping wires i and j in a quantum circuit with n wires.
+    // i and j are zero-based, i.e., they are between 0 and (n-1).
+    // The matrix that is returned has size (2**n)x(2**n)
+    static wireSwap(i,j,n) {
+        Util.assert( 0<=i && i<n && 0<=j && j<n, "CMatrix.wireSwap(): invalid indices" );
+        Util.assert( i!=j, "CMatrix.wireSwap(): indices are unexpectedly equal" );
+        let matrixSize = 2 ** n;
+        if ( i === j ) {
+            return CMatrix.identity( matrixSize );
+        }
+        let M = new CMatrix( matrixSize, matrixSize );
+
+        if ( usingTextbookConvention ) {
+            // inverting the wire indices like this is equivalent to calling reverseEndianness() on the matrix just before returning it, but this is more efficient
+            i = n-1 - i;
+            j = n-1 - j;
+        }
+
+        // define stuff for operating on bits
+        let mask_i = 1 << i;
+        let mask_j = 1 << j;
+        let antimask = ~( mask_i | mask_j );
+
+        for ( let r = 0; r < matrixSize; ++r ) {
+            let c = r;
+
+            // BEGIN: swap the ith and jth bits of c
+            let extracted_bit_i = c & mask_i;
+            let extracted_bit_j = c & mask_j;
+            c &= antimask; // turns off bits i and j
+            if ( extracted_bit_i !== 0 ) c |= mask_j; // turns on bit j
+            if ( extracted_bit_j !== 0 ) c |= mask_i; // turns on bit i
+            // END
+
+            M.set(r,c,1);
+        }
+        return M;
+    }
+    // Given a 4x4 matrix, which operates on two qubits q0 and q1,
+    // this routine modifies it so that it will operate on the ith and jth qubits
+    // of an n-qubit circuit.
+    // The matrix that is returned has size (2**n)x(2**n)
+    // For example, passing in arguments (m,1,0,2)
+    // returns an 'upside-down' version of the original matrix.
+    static expand4x4ForNWires(m/*a 4x4 matrix*/,i,j,n/*number of qubits in the circuit*/) {
+        Util.assert( 0<=i && i<n && 0<=j && j<n && i!=j, "CMatrix.expand4x4ForNWires(): invalid indices" );
+        Util.assert( m._rows===m._cols && m._rows===4, "CMatrix.expand4x4ForNWires(): invalid size" );
+
+        // Step 1: turn the matrix upside down, if necessary
+        let m1 = null;
+        if ( i > j ) {
+            //
+            //              +----+                +---+
+            //        q_0 --|    |--     q_0 --X--|   |--X--
+            //              | m1 |    =        |  | m |  |
+            //        q_1 --|    |--     q_1 --X--|   |--X--
+            //              +----+                +---+
+            //
+            //              +----+                +---+
+            // q_i' = q_j --|    |--     q_j --X--|   |--X--
+            //              | m1 |    =        |  | m |  |
+            // q_j' = q_i --|    |--     q_i --X--|   |--X--
+            //              +----+                +---+
+            //
+            m1 = CMatrix.naryMult([ CMatrix.gate4x4swap, m, CMatrix.gate4x4swap ]);
+            let tmp = i;
+            i = j;
+            j = tmp;
+            Util.assert(i<j,"CMatrix.expand4x4ForNWires(): unexpected condition");
+        }
+        else {
+            m1 = m.copy();
+        }
+
+        // Step 2: account for wires in between i and j
+        let m2 = null;
+        let numInnerWires = j-i-1;
+        if ( numInnerWires > 0 ) {
+            //
+            //       q_0 --+----+--           q_0 -----+----+-----
+            //             |    |                      | m1 |
+            //       q_1 --|    |--           q_1 --X--+----+--X--
+            //             |    |                   |          |
+            //       ... --|    |--           ... --|----------|--
+            //             | m2 |    =              |          |
+            //             |    |             ...
+            //             |    |                   |          |
+            //       ... --|    |--           ... --|----------|--
+            //             |    |                   |          |
+            //   q_{j-i} --+----+--       q_{j-i} --X----------X--
+            //
+            let swapStep = CMatrix.tensor( CMatrix.wireSwap(0,numInnerWires,numInnerWires+1), CMatrix.gate2x2identity, usingTextbookConvention );
+            m2 = CMatrix.naryMult( [
+                swapStep,
+                CMatrix.tensor( CMatrix.identity(2**numInnerWires), m1, usingTextbookConvention ),
+                swapStep
+            ] );
+        }
+        else {
+            m2 = m1;
+        }
+
+        // Step 3: if there are wires before i, and/or after j,
+        // we must perform a tensor product with an appropriately sized identity matrix,
+        // either before and/or after m2, respectively.
+        // Rather than do these tensor products separately here,
+        // we put the relevant matrices in a list and let naryTensor()
+        // perform the tensor products in the optimal associative order.
+        //
+        let listOfMatrices = [ m2 ];
+        let numWiresBefore = i;
+        if ( numWiresBefore > 0 ) {
+            listOfMatrices.push( CMatrix.identity(2**numWiresBefore) ); // add to end of list
+        }
+        let numWiresAfter = n-1-j;
+        if ( numWiresAfter > 0 ) {
+            listOfMatrices.unshift( CMatrix.identity(2**numWiresAfter) ); // insert at beginning of list
+        }
+        let m3 = CMatrix.naryTensor( listOfMatrices, usingTextbookConvention  );
+
+        return m3;
+    }
+    // Returns a new state vector.
+    // Avoids computing an explicit matrix of size (2**n)x(2**n), saving a lot of memory and time.
+    // Adapted from Quirk's source code, specifically
+    //     https://github.com/Strilanc/Quirk/ ,
+    //     src/math/Matrix.js,
+    //     applyToStateVectorAtQubitWithControls()
+    static transformStateVectorWith2x2(
+        m, // a 2x2 matrix
+        i, // index of wire on which to apply m
+        n, // number of qubits in the circuit
+        stateVector, // a matrix of size (2**n)x1, i.e. a column vector
+        listOfControlBits = [] // a list of pairs of the form [wire_index, flag] where 0<=wire_index<n and flag is true for a control bit and false for an anti-control bit
+    ) {
+        Util.assert( 0<=i && i<n, "CMatrix.transformStateVectorWith2x2(): invalid index" );
+        Util.assert( m._rows===m._cols && m._rows===2, "CMatrix.transformStateVectorWith2x2(): invalid size" );
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "CMatrix.transformStateVectorWith2x2(): state vector has invalid size" );
+
+        let inclusionMask = 0;
+        let desiredValueMask = 0;
+        for ( let iter of listOfControlBits ) {
+            let [wireIndex,flag] = iter;
+            if ( usingTextbookConvention )
+                wireIndex = n-1 - wireIndex;
+            let bit = 1 << wireIndex;
+            inclusionMask |= bit;
+            if ( flag )
+                desiredValueMask |= bit;
+        }
+
+        if ( usingTextbookConvention )
+            i = n-1 - i;
+        let chunk = new CMatrix(2,1);
+        let strideLength = 2 << i; // could be 2, 4, 8 ...
+        let strideChunkSize = strideLength * 2; // could be 4, 8, 16 ...
+        let result = stateVector.copy();
+        for (let strideChunkStart = 0; strideChunkStart < 2*stateVector._rows; strideChunkStart += strideChunkSize) {
+            for (let strideOffset = 0; strideOffset < strideLength; strideOffset += 2) {
+                let stateIndex = (strideChunkStart | strideOffset) >> 1;
+                if ( (inclusionMask & stateIndex) !== desiredValueMask )
+                    continue;
+
+                // Collect inputs into a small contiguous vector.
+                let k = strideChunkStart + strideOffset;
+                chunk._m[0] = stateVector._m[k];   // real component
+                chunk._m[1] = stateVector._m[k+1]; // imaginary component
+                k += strideLength;
+                chunk._m[2] = stateVector._m[k];   // real component
+                chunk._m[3] = stateVector._m[k+1]; // imaginary component
+
+                let transformedChunk = CMatrix.mult( m, chunk );
+
+                // Scatter outputs.
+                k = strideChunkStart + strideOffset;
+                result._m[k] = transformedChunk._m[0];
+                result._m[k+1] = transformedChunk._m[1];
+                k += strideLength;
+                result._m[k] = transformedChunk._m[2];
+                result._m[k+1] = transformedChunk._m[3];
+            }
+        }
+        return result;
+    }
+    // Returns a new state vector.
+    // Avoids computing an explicit swap matrix of size (2**n)x(2**n), saving a lot of memory and time.
+    static transformStateVectorWithSwap( // TODO test this; seems to work well with symmetric swaps on even number of qubits
+        i, // index of 1st wire on which to apply the swap
+        j, // index of 2nd wire on which to apply the swap
+        n, // number of qubits in the circuit
+        stateVector // a matrix of size (2**n)x1, i.e. a column vector
+    ) {
+        Util.assert( 0<=i && i<n && 0<=j && j<n, "CMatrix.transformStateVectorWithSwap(): invalid indices" );
+        Util.assert( i!=j, "CMatrix.transformStateVectorWithSwap(): indices are unexpectedly equal" );
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "CMatrix.transformStateVectorWithSwap(): state vector has invalid size" );
+
+        let result = stateVector.copy();
+        if ( i === j ) {
+            return result;
+        }
+        if ( usingTextbookConvention ) {
+            i = n-1 - i;
+            j = n-1 - j;
+        }
+        if ( i > j ) {
+            let tmp = i;
+            i = j;
+            j = tmp;
+        }
+        let numStates = 2 ** n;
+
+        // define stuff for operating on bits
+        let mask_i = 1 << i;
+        let mask_j = 1 << j;
+        let antimask = ~( mask_i | mask_j );
+
+        for ( let r1 = 0; r1 < numStates; ++r1 ) {
+            let r2 = r1;
+
+            let ithBit = (r2 >> i) & 1;
+            let jthBit = (r2 >> j) & 1;
+            // If the ith and jth bits are both 0 or both 1, we don't need to swap rows.
+            // If the two bits have different values, we do want to swap rows r1 and r2.
+            // But we don't want to swap those rows twice.
+            // So we only swap when we encounter the case where the ith bit is 1 and the jth is 0.
+            if ( ithBit===1 && jthBit===0 ) {
+                r2 &= antimask; // turns off bits i and j
+                r2 |= mask_j; // turns on bit j
+
+                result.set(r2,0,stateVector.get(r1,0));
+                result.set(r1,0,stateVector.get(r2,0));
+            }
+        }
+        return result;
+    }
+
+    // If the client wants to, they could change the value of usingTextbookConvention
+    // and call this again, to initialize things using a different convention.
+    static init() {
+        // When discussing quantum circuits,
+        // the term 'bra', written <*|, denotes a row vector,
+        // and the term 'ket', written |*>, denotes a column vector.
+        // So an expression written as <a|b> means the dot product of a and b,
+        // and the expression |a><b| results in a matrix as tall as a and as wide as b.
+
+        // Here we define the six canonical points on the Bloch sphere.
+        //
+        // |0>
+        CMatrix.braZero = CMatrix.createRowVector([1,0]);
+        CMatrix.ketZero = CMatrix.createColVector([1,0]);
+        // |1>
+        CMatrix.braOne = CMatrix.createRowVector([0,1]);
+        CMatrix.ketOne = CMatrix.createColVector([0,1]);
+        // |+>
+        CMatrix.ketPlus = CMatrix.createColVector([Math.SQRT1_2,Math.SQRT1_2]);
+        CMatrix.braPlus = CMatrix.ketPlus.transpose();
+        // |->
+        CMatrix.ketMinus = CMatrix.createColVector([Math.SQRT1_2,-Math.SQRT1_2]);
+        CMatrix.braMinus = CMatrix.ketMinus.transpose();
+        // |+i>
+        CMatrix.ketPlusI = CMatrix.createColVector([Math.SQRT1_2,new Complex(0,Math.SQRT1_2)]);
+        CMatrix.braPlusI = CMatrix.ketPlusI.transpose();
+        // |-i>
+        CMatrix.ketMinusI = CMatrix.createColVector([Math.SQRT1_2,new Complex(0,-Math.SQRT1_2)]);
+        CMatrix.braMinusI = CMatrix.ketMinusI.transpose();
+
+        // Here we define some commonly used logic gates.
+        //
+        CMatrix.gate2x2zero = new CMatrix(2,2);
+        CMatrix.gate2x2identity = CMatrix.identity(2);
+        CMatrix.gate2x2hadamard = CMatrix.mult( CMatrix.create([[1,1],[1,-1]]), Math.SQRT1_2 );
+
+        CMatrix.gate2x2not = CMatrix.create([[0,1],[1,0]]); // same as Pauli X
+        CMatrix.gate2x2y = CMatrix.create([[new Complex(0,0),new Complex(0,-1)],[new Complex(0,1),new Complex(0,0)]]);
+        CMatrix.gate2x2z = CMatrix.create([[1,0],[0,-1]]);
+        CMatrix.gate2x2rootx = CMatrix.mult(
+            CMatrix.create([[new Complex(1,1),new Complex(1,-1)],[new Complex(1,-1),new Complex(1,1)]]),
+            0.5
+        );
+        CMatrix.gate2x2rooty = CMatrix.mult(
+            CMatrix.create([[new Complex(1,1),new Complex(-1,-1)],[new Complex(1,1),new Complex(1,1)]]),
+            0.5
+        );
+        //let cos_pi_over_8 = Math.cos(Math.PI/8);
+        //let sin_pi_over_8 = Math.sin(Math.PI/8);
+        let c1 = new Complex( (2+Math.SQRT2)/4 /* cos_pi_over_8*cos_pi_over_8 */, Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */ );
+        let c2 = new Complex( (2-Math.SQRT2)/4 /* sin_pi_over_8*sin_pi_over_8 */, - Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */ );
+        CMatrix.gate2x2fourthrootx = CMatrix.create([[c1,c2],[c2,c1]]);
+        c2 = new Complex( - Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */, - (2-Math.SQRT2)/4 /* sin_pi_over_8*sin_pi_over_8 */ );
+        let c3 = new Complex( Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */, (2-Math.SQRT2)/4 /* sin_pi_over_8*sin_pi_over_8 */ );
+        CMatrix.gate2x2fourthrooty = CMatrix.create([[c1,c2],[c3,c1]]);
+
+        CMatrix.gate2x2rx90degrees = CMatrix.create([[new Complex(Math.SQRT1_2,0),new Complex(0,-Math.SQRT1_2)],[new Complex(0,-Math.SQRT1_2),new Complex(Math.SQRT1_2,0)]]);
+        CMatrix.gate2x2rz90degrees = CMatrix.create([[new Complex(Math.SQRT1_2,-Math.SQRT1_2),new Complex(0,0)],[new Complex(0,0),new Complex(Math.SQRT1_2,Math.SQRT1_2)]]);
+
+        // qubit q0 is the control bit, qubit q1 is the target bit.
+        CMatrix.gate4x4cnot = CMatrix.create([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]).reverseEndianness( ! usingTextbookConvention );
+        CMatrix.gate4x4swap = CMatrix.wireSwap(0,1,2);
+    }
+}
+
+CMatrix.init();
+
+
+
+function performRegressionTest( verbose=true ) {
+    console.log("Matrices are ordered according to " + (usingTextbookConvention?"textbook":"common software") + " convention.");
+
+    let input, step1, step2, step3, output, expectedOutput, success;
+    let allSuccessful = true;
+
+
+    // Simulate a circuit on two qubits that entangles them,
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22H%22],[%22%E2%80%A2%22,%22X%22]]}
+    //
+    // qubit q0 |0>----Hadamard-----o-----
+    //                              |
+    // qubit q1 |0>----------------(+)----
+    //
+    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.tensor( CMatrix.gate2x2identity /*q1*/, CMatrix.gate2x2hadamard /*q0*/, usingTextbookConvention );
+    step2 = CMatrix.gate4x4cnot;
+    output = CMatrix.naryMult([ step2, step1, input ]);
+    if ( verbose) console.log(StringUtil.concatenateMultilineStrings(
+        step2.toString(),
+        " * ",
+        step1.toString(),
+        " * ",
+        input.toString(),
+        " = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([ 0.707, 0, 0, 0.707 ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'872ec24acc' );
+    allSuccessful &= success;
+
+
+    // Simulate another circuit on two qubits
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22%E2%80%A2%22,%22X%22],[%22X%22]]}
+    //
+    // qubit q0 |0>----o----(+)-
+    //                 |
+    // qubit q1 |0>---(+)-------
+    //
+    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.gate4x4cnot;
+    step2 = CMatrix.tensor( CMatrix.gate2x2identity /*q1*/, CMatrix.gate2x2not /*q0*/, usingTextbookConvention );
+    output = CMatrix.naryMult([ step2, step1, input ]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        step2.toString(),
+        " * ",
+        step1.toString(),
+        " * ",
+        input.toString(),
+        " = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([ 0,1,0,0 ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'ec53d19216' );
+    allSuccessful &= success;
+
+
+    // Simulate another circuit on two qubits
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22%E2%80%A2%22,%22X%22],[%22X%22]],%22init%22:[1]}
+    //
+    // qubit q0 |1>----o----(+)-
+    //                 |
+    // qubit q1 |0>---(+)-------
+    //
+    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketOne /*q0*/, usingTextbookConvention  );
+    step1 = CMatrix.gate4x4cnot;
+    step2 = CMatrix.tensor( CMatrix.gate2x2identity /*q1*/, CMatrix.gate2x2not /*q0*/, usingTextbookConvention );
+    output = CMatrix.naryMult([ step2, step1, input ]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        step2.toString(),
+        " * ",
+        step1.toString(),
+        " * ",
+        input.toString(),
+        " = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([ 0,0,1,0 ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'2bbcc438a1' );
+    allSuccessful &= success;
+
+
+    // Simulate another circuit on two qubits
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22%E2%80%A2%22,%22X%22],[%22X%22]],%22init%22:[%22+%22,%22i%22]}
+    //
+    // qubit q0 |+>----o----(+)-
+    //                 |
+    // qubit q1 |i>---(+)-------
+    //
+    input = CMatrix.tensor( CMatrix.ketPlusI /*q1*/, CMatrix.ketPlus /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.gate4x4cnot;
+    step2 = CMatrix.tensor( CMatrix.gate2x2identity /*q1*/, CMatrix.gate2x2not /*q0*/, usingTextbookConvention );
+    output = CMatrix.naryMult([ step2, step1, input ]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        step2.toString(),
+        " * ",
+        step1.toString(),
+        " * ",
+        input.toString(),
+        " = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([ new Complex(0,0.5),0.5,0.5,new Complex(0,0.5) ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'7e132563e4' );
+    allSuccessful &= success;
+
+
+    // Simulate another circuit on two qubits
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[{%22id%22:%22Rxft%22,%22arg%22:%22pi/2%22},{%22id%22:%22Rxft%22,%22arg%22:%22pi/2%22}],[%22%E2%80%A2%22,{%22id%22:%22Rzft%22,%22arg%22:%22pi/2%22}]]}
+    //
+    // qubit q0 |0>----RX(pi/2)--------o--------
+    //                                 |
+    // qubit q1 |0>----RX(pi/2)----(RZ(pi/2))---
+    //
+    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.tensor( CMatrix.gate2x2rx90degrees /*q1*/, CMatrix.gate2x2rx90degrees /*q0*/, usingTextbookConvention );
+    output = CMatrix.mult( step1, input );
+    output = CMatrix.transformStateVectorWith2x2( CMatrix.gate2x2rz90degrees,1,2,output,[[0,true]]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        "... = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([ new Complex(0.5,0),new Complex(-0.35355,-0.35355),new Complex(0,-0.5),new Complex(-0.35355,-0.35355) ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'be0c19df98' );
+    allSuccessful &= success;
+
+
+    // Simulate another circuit on two qubits
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22X^%C2%BC%22,%22Y^%C2%BC%22],[1,%22X^%C2%BC%22]]}
+    //
+    // qubit q0 |0>----(x^0.25)-----------------
+    //
+    // qubit q1 |0>----(y^0.25)-----(x^0.25)----
+    //
+    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.tensor( CMatrix.gate2x2fourthrooty /*q1*/, CMatrix.gate2x2fourthrootx /*q0*/, usingTextbookConvention );
+    step2 = CMatrix.tensor( CMatrix.gate2x2fourthrootx /*q1*/, CMatrix.gate2x2identity /*q0*/, usingTextbookConvention );
+    output = CMatrix.naryMult([ step2, step1, input ]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        step2.toString(),
+        " * ",
+        step1.toString(),
+        " * ",
+        input.toString(),
+        " = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([ new Complex(0.42678, 0.67678),new Complex(0.28033, -0.17678),new Complex(0.42678, 0.17678),new Complex(0.07322, -0.17678) ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'21e10d99d6' );
+    allSuccessful &= success;
+
+
+    // Simulate a circuit on three qubits
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22X^%C2%BC%22,%22Y^%C2%BC%22,%22H%22],[1,%22X^%C2%BC%22],[1,%22Swap%22,%22Swap%22]]}
+    //
+    // qubit q0 |0>----(x^0.25)----------------------
+    //
+    // qubit q1 |0>----(y^0.25)-----(x^0.25)----X-----
+    //                                          |
+    // qubit q2 |0>-------H---------------------X-----
+    //
+    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention );
+    step1 = CMatrix.naryTensor( [ CMatrix.gate2x2hadamard /*q2*/, CMatrix.gate2x2fourthrooty /*q1*/, CMatrix.gate2x2fourthrootx /*q0*/ ], usingTextbookConvention );
+    step2 = CMatrix.naryTensor( [ CMatrix.gate2x2identity /*q2*/, CMatrix.gate2x2fourthrootx /*q1*/, CMatrix.gate2x2identity /*q0*/ ], usingTextbookConvention );
+    step3 = CMatrix.wireSwap(1,2,3);
+    output = CMatrix.naryMult([ step3, step2, step1, input ]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        step3.toString(),
+        " * ",
+        "...", // step2.toString(),
+        " * ",
+        "...", // step1.toString(),
+        " * ",
+        input.toString(),
+        " = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([
+        new Complex(0.30178,0.47855),
+        new Complex(0.19822,-0.12500),
+        new Complex(0.30178,0.47855),
+        new Complex(0.19822,-0.12500),
+        new Complex(0.30178,0.12500),
+        new Complex(0.05178,-0.12500),
+        new Complex(0.30178,0.12500),
+        new Complex(0.05178,-0.12500)
+    ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'1c4fee293c' );
+    allSuccessful &= success;
+
+
+
+
+    // Simulate a circuit on three qubits
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22X^%C2%BC%22,%22Y^%C2%BC%22,%22H%22],[1,%22X^%C2%BC%22],[1,%22X%22,%22%E2%80%A2%22]]}
+    //
+    // qubit q0 |0>----(x^0.25)-------------------------
+    //
+    // qubit q1 |0>----(y^0.25)-----(x^0.25)----(+)-----
+    //                                           |
+    // qubit q2 |0>-------H----------------------o------
+    //
+    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention );
+    step1 = CMatrix.naryTensor( [ CMatrix.gate2x2hadamard /*q2*/, CMatrix.gate2x2fourthrooty /*q1*/, CMatrix.gate2x2fourthrootx /*q0*/ ], usingTextbookConvention );
+    step2 = CMatrix.naryTensor( [ CMatrix.gate2x2identity /*q2*/, CMatrix.gate2x2fourthrootx /*q1*/, CMatrix.gate2x2identity /*q0*/ ], usingTextbookConvention );
+    step3 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 2, 1, 3 );
+    output = CMatrix.naryMult([ step3, step2, step1, input ]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        step3.toString(),
+        " * ",
+        "...", // step2.toString(),
+        " * ",
+        "...", // step1.toString(),
+        " * ",
+        input.toString(),
+        " = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([
+        new Complex(0.30178,0.47855),
+        new Complex(0.19822,-0.12500),
+        new Complex(0.30178,0.12500),
+        new Complex(0.05178,-0.12500),
+        new Complex(0.30178,0.12500),
+        new Complex(0.05178,-0.12500),
+        new Complex(0.30178,0.47855),
+        new Complex(0.19822,-0.12500)
+    ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'1c4dab5619' );
+    allSuccessful &= success;
+
+
+
+
+    // Simulate the same circuit, but this time without using explicit large matrices.
+    //
+    // qubit q0 |0>----(x^0.25)-------------------------
+    //
+    // qubit q1 |0>----(y^0.25)-----(x^0.25)----(+)-----
+    //                                           |
+    // qubit q2 |0>-------H----------------------o------
+    //
+    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention  );
+    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,2,3,input,[]);
+    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrooty,1,3,step1,[]);
+    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrootx,0,3,step1,[]);
+    step2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrootx,1,3,step1,[]);
+    output = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,1,3,step2,[[2,true]]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        input.toString(),
+        " -> ",
+        step1.toString(),
+        " -> ",
+        step2.toString(),
+        " -> ",
+        output.toString(true)
+    ));
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'23abd31026' );
+    allSuccessful &= success;
+
+
+
+
+
+    // Simulate another circuit on two qubits
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22X^%C2%BD%22,%22X^%C2%BD%22],[%22%E2%80%A2%22,%22X%22]],%22init%22:[0,%22-%22]}
+    //
+    // qubit q0 |0>---(x^0.5)----o-----
+    //                           |
+    // qubit q1 |->---(x^0.5)---(+)----
+    //
+    input = CMatrix.tensor( CMatrix.ketMinus /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.tensor( CMatrix.gate2x2rootx /*q1*/, CMatrix.gate2x2rootx /*q0*/, usingTextbookConvention );
+    step2 = CMatrix.gate4x4cnot;
+    output = CMatrix.naryMult([ step2, step1, input ]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        step2.toString(),
+        " * ",
+        step1.toString(),
+        " * ",
+        input.toString(),
+        " = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([
+        new Complex(-0.35355, 0.35355),
+        new Complex(-0.35355,-0.35355),
+        new Complex( 0.35355,-0.35355),
+        new Complex( 0.35355, 0.35355)
+    ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'1c58b99eac' );
+    allSuccessful &= success;
+
+
+    // Simulate another circuit on two qubits
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22X^%C2%BD%22,%22X%22],[%22H%22,%22X^%C2%BD%22],[%22%E2%80%A2%22,%22X%22]]}
+    //
+    // qubit q0 |0>---(x^0.5)--hadamard----o-----
+    //                                     |
+    // qubit q1 |0>-----(+)-----(x^0.5)---(+)----
+    //
+    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.tensor( CMatrix.gate2x2not /*q1*/, CMatrix.gate2x2rootx /*q0*/, usingTextbookConvention );
+    step2 = CMatrix.tensor( CMatrix.gate2x2rootx /*q1*/, CMatrix.gate2x2hadamard /*q0*/, usingTextbookConvention );
+    step3 = CMatrix.gate4x4cnot;
+    output = CMatrix.naryMult([ step3, step2, step1, input ]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        step3.toString(),
+        " * ",
+        step2.toString(),
+        " * ",
+        step1.toString(),
+        " * ",
+        input.toString(),
+        " = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([
+        new Complex( 0.35355,-0.35355),
+        new Complex(-0.35355, 0.35355),
+        new Complex( 0.35355, 0.35355),
+        new Complex( 0.35355, 0.35355)
+    ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'723049b630' );
+    allSuccessful &= success;
+
+
+    // Simulate another circuit on three qubits
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22X^%C2%BD%22,%22X^%C2%BD%22,%22X^%C2%BD%22],[1,%22X%22,%22%E2%80%A2%22]]}
+    //
+    // qubit q0 |0>---(x^0.5)--------
+    //
+    // qubit q1 |0>---(x^0.5)--(+)---
+    //                          |
+    // qubit q2 |0>---(x^0.5)---o----
+    //
+    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention  );
+    step1 = CMatrix.naryTensor( [ CMatrix.gate2x2rootx /*q2*/, CMatrix.gate2x2rootx /*q1*/, CMatrix.gate2x2rootx /*q0*/ ], usingTextbookConvention  );
+    step2 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 2, 1, 3 );
+    output = CMatrix.naryMult([ step2, step1, input ]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        step2.toString(),
+        " * ",
+        step1.toString(),
+        " * ",
+        input.toString(),
+        " = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([
+        new Complex(-0.25, 0.25),
+        new Complex( 0.25, 0.25),
+        new Complex( 0.25, 0.25),
+        new Complex( 0.25,-0.25),
+        new Complex( 0.25,-0.25),
+        new Complex(-0.25,-0.25),
+        new Complex( 0.25, 0.25),
+        new Complex( 0.25,-0.25)
+    ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'c7cdcdc026' );
+    allSuccessful &= success;
+
+
+    // Simulate the same circuit, but this time without using explicit large matrices.
+    //
+    // qubit q0 |0>---(x^0.5)--------
+    //
+    // qubit q1 |0>---(x^0.5)--(+)---
+    //                          |
+    // qubit q2 |0>---(x^0.5)---o----
+    //
+    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention  );
+    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,0,3,input,[]);
+    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,1,3,step1,[]);
+    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,2,3,step1,[]);
+    output = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,1,3,step1,[[2,true]]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        input.toString(),
+        " -> ",
+        step1.toString(),
+        " -> ",
+        output.toString(true)
+    ));
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'45cacd1026' );
+    allSuccessful &= success;
+
+
+
+    // Simulate a circuit on four qubits
+    // equivalent to
+    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22H%22,%22X^%C2%BD%22,1,%22X^%C2%BD%22],[%22%E2%80%A2%22,1,%22X%22],[1,%22X%22,%22%E2%80%A2%22],[1,%22%E2%80%A2%22,1,%22X%22],[1,%22H%22]]}
+    //
+    // qubit q0 |0>---hadamard---o--------------------------
+    //                           |
+    // qubit q1 |0>---(x^0.5)----|---(+)----o----hadamard---
+    //                           |    |     |
+    // qubit q2 |0>-------------(+)---o-----|---------------
+    //                                      |
+    // qubit q3 |0>---(x^0.5)--------------(+)--------------
+    //
+    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q3*/, CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention );
+    step1 = CMatrix.naryTensor( [ CMatrix.gate2x2rootx /*q3*/, CMatrix.gate2x2identity /*q2*/, CMatrix.gate2x2rootx /*q1*/, CMatrix.gate2x2hadamard /*q0*/ ], usingTextbookConvention );
+    step2 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 0, 2, 4 );
+    step3 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 2, 1, 4 );
+    step4 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 1, 3, 4 );
+    step5 = CMatrix.naryTensor( [ CMatrix.gate2x2identity /*q3*/, CMatrix.gate2x2identity /*q2*/, CMatrix.gate2x2hadamard /*q1*/, CMatrix.gate2x2identity /*q0*/ ], usingTextbookConvention );
+
+    output = CMatrix.naryMult([ step5, step4, step3, step2, step1, input ]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        "... = ",
+        output.toString(true)
+    ));
+    expectedOutput = CMatrix.createColVector([
+        new Complex( 0  , 0  ),
+        new Complex( 0  , 0  ),
+        new Complex( 0  , 0.5),
+        new Complex( 0  , 0  ),
+        new Complex( 0  , 0  ),
+        new Complex( 0.5, 0  ),
+        new Complex( 0  , 0  ),
+        new Complex( 0  , 0  ),
+        new Complex( 0.5, 0  ),
+        new Complex( 0  , 0  ),
+        new Complex( 0  , 0  ),
+        new Complex( 0  , 0  ),
+        new Complex( 0  , 0  ),
+        new Complex( 0  , 0  ),
+        new Complex( 0  , 0  ),
+        new Complex( 0  ,-0.5)
+    ]);
+    success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
+    Util.assert( success, "Regression test failed "+'95b90f1b5d' );
+    allSuccessful &= success;
+
+    // Try simulating the same circuit, but this time without using explicit large matrices.
+    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,0,4,input,[]);
+    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,1,4,output_method2,[]);
+    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,3,4,output_method2,[]);
+    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,2,4,output_method2,[[0,true]]);
+    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,1,4,output_method2,[[2,true]]);
+    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,3,4,output_method2,[[1,true]]);
+    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,1,4,output_method2,[]);
+    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+        "Difference found using a better method: ",
+        CMatrix.diff(output,output_method2).transpose().toString()
+    ));
+    success = CMatrix.approximatelyEqual(output,output_method2);
+    Util.assert( success, "Regression test failed "+'95b90f1b5d_B' );
+    allSuccessful &= success;
+
+
+
+
+    console.log( allSuccessful ? "All regression tests passed." : "At least one regression test failed." );
+}
+
+performRegressionTest(true);
+
+
+
+// TODO add a swap matrix to this - but how ?
+// Test the equivalence of two ways of transforming state vectors.
+// One way uses an explicit matrix of size (2**n)x(2**n),
+// the other uses a much less expensive way.
+// If the output state vector is zero, the two methods found the same result.
+n = 3;
+let sv = new CMatrix(2**n,1); // state vector
+for ( let i = 0; i < 2*(2**n); ++i ) sv._m[i] = Math.random();
+console.log('random input state vector is ' + sv.transpose().toString())
+for ( let ii = 0; ii < n; ++ii ){ // control bit
+    for ( jj = 0; jj < n; ++jj ) { // 2x2 gate bit
+        if ( ii===jj )
+            continue;
+        m_method1 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, ii, jj, n );
+        r_method1 = CMatrix.mult( m_method1, sv );
+        m_method2 = CMatrix.gate2x2not;
+        r_method2 = CMatrix.transformStateVectorWith2x2(m_method2,jj,n,sv,[[ii,true]]);
+        //console.log(r_method1.toString());
+        //console.log(r_method2.toString());
+        console.log(`    control bit on wire ${ii}, 2x2 gate on wire ${jj}, difference is ` + CMatrix.diff(r_method1,r_method2).transpose().toString());
+    }
+}
+
+
+// Simulate a circuit containing many ccnot, cnot, and other gates.
+let time0 = (new Date()).getTime();
+n = 4;
+let numGates = 0;
+let sv0 = new CMatrix(2**n,1); // state vector
+sv0.set(0,0,1);
+sv = sv0.copy();
+for ( let ii = 0; ii < n; ++ii ) {
+    // apply a gate to the (ii)th wire
+    if ( ii%3===0 ) {
+        console.log(`h at ${ii}`);
+        sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,ii,n,sv,[]);
+    }
+    else if ( ii%3===1 ) {
+        console.log(`rootx at ${ii}`);
+        sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,ii,n,sv,[]);
+    }
+    else {
+        console.log(`fourthrooty at ${ii}`);
+        sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrooty,ii,n,sv,[]);
+    }
+    numGates ++;
+}
+console.log("output is "+sv.transpose().toString());
+for ( let ii = 0; ii < Math.floor(n/2); ++ii ) {
+    // add a ccnot gate on random wires
+    let jj1 = Math.floor( Math.random() * n );
+    let jj2 = Math.floor( Math.random() * (n-1) );
+    if ( jj2 === jj1 ) jj2=n-1;
+    let jj3 = Math.floor( Math.random() * (n-2) );
+    if ( jj3 === jj1 || jj3 === jj2 ) jj3++;
+    if ( jj3 === jj1 || jj3 === jj2 ) jj3++;
+    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && 0<=jj3 && jj3<n && jj1!==jj2 && jj2!==jj3 && jj1!==jj3, "unexpected condition 1" );
+    console.log(`ccnot at ${jj1}, ${jj2}, ${jj3}`);
+    sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,jj3,n,sv,[[jj1,true],[jj2,true]]);
+    numGates ++;
+    console.log("output is "+sv.transpose().toString());
+
+    // add a swap gate on random wires
+    jj1 = Math.floor( Math.random() * n );
+    jj2 = Math.floor( Math.random() * (n-1) );
+    if ( jj2 === jj1 ) jj2=n-1;
+    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 2" );
+    console.log(`swap at ${jj1}, ${jj2}`);
+    sv = CMatrix.transformStateVectorWithSwap(jj1,jj2,n,sv);
+    numGates ++;
+    console.log("output is "+sv.transpose().toString());
+
+    // add a cnot gate on random wires
+    jj1 = Math.floor( Math.random() * n );
+    jj2 = Math.floor( Math.random() * (n-1) );
+    if ( jj2 === jj1 ) jj2=n-1;
+    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 3" );
+    console.log(`cnot at ${jj1}, ${jj2}`);
+    sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,jj2,n,sv,[[jj1,true]]);
+    numGates ++;
+    console.log("output is "+sv.transpose().toString());
+
+    // add a cfourthrootx gate on random wires
+    jj1 = Math.floor( Math.random() * n );
+    jj2 = Math.floor( Math.random() * (n-1) );
+    if ( jj2 === jj1 ) jj2=n-1;
+    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 4" );
+    console.log(`cfourthrootx at ${jj1}, ${jj2}`);
+    sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrootx,jj2,n,sv,[[jj1,true]]);
+    numGates ++;
+    console.log("output is "+sv.transpose().toString());
+
+    // add a cfourthrooty gate on random wires
+    jj1 = Math.floor( Math.random() * n );
+    jj2 = Math.floor( Math.random() * (n-1) );
+    if ( jj2 === jj1 ) jj2=n-1;
+    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 5" );
+    console.log(`cfourthrooty at ${jj1}, ${jj2}`);
+    sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrooty,jj2,n,sv,[[jj1,true]]);
+    numGates ++;
+    console.log("output is "+sv.transpose().toString());
+
+    // add a ch gate on random wires
+    jj1 = Math.floor( Math.random() * n );
+    jj2 = Math.floor( Math.random() * (n-1) );
+    if ( jj2 === jj1 ) jj2=n-1;
+    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 6" );
+    console.log(`ch at ${jj1}, ${jj2}`);
+    sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,jj2,n,sv,[[jj1,true]]);
+    numGates ++;
+    console.log("output is "+sv.transpose().toString());
+}
+console.log("output is "+sv.transpose().toString());
+let time1 = (new Date()).getTime();
+let timeTaken = time1 - time0; // in milliseconds
+console.log(`${numGates} gates on ${n} qubits in ${timeTaken} milliseconds`);
+
+</script>
+</body>
+</html>
+
