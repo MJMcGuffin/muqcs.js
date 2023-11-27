@@ -3,6 +3,10 @@
 <body>
 Open a console (in Chrome, this is done by selecting 'Developer Tools'). From the console prompt, you can call functions in the code and see output printed to the console.
 
+<p>
+Or go to the <a href="https://github.com/MJMcGuffin/muqcs">github repository</a> page.
+</p>
+
 <script>
 
 // CONVENTIONs
@@ -58,6 +62,8 @@ Open a console (in Chrome, this is done by selecting 'Developer Tools'). From th
 let usingTextbookConvention = false;
 
 
+let decimalPrecision = 3;
+let precisionForApproximateComparison = 0.01;
 
 class Util {
     static assert( condition, message ) {
@@ -88,7 +94,7 @@ class Util {
 class StringUtil {
     static numToString(x) {
         let s1 = x.toString();
-        let s2 = x.toFixed(3);
+        let s2 = x.toFixed(decimalPrecision);
         if ( s1.length < s2.length ) return s1;
         else return s2;
     }
@@ -476,7 +482,7 @@ class CMatrix {
         return list[0];
     }
     // returns true if the given matrices are approximately equal, within the given tolerance
-    static approximatelyEqual(a,b,tolerance=0.01,printMessage=true) {
+    static approximatelyEqual(a,b,tolerance=precisionForApproximateComparison,printMessage=true) {
         Util.assert(a instanceof CMatrix && b instanceof CMatrix,"CMatrix.approximatelyEqual(): wrong type");
         Util.assert(a._rows === b._rows && a._cols === b._cols, "CMatrix.approximatelyEqual(): incompatible dimensions" );
         for ( let j = a._m.length-1; j >= 0; j-- ) {
