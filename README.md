@@ -1,4 +1,4 @@
-# <a href="https://mjmcguffin.github.io/muqcs/">muqcs</a>
+# <a href="https://mjmcguffin.github.io/muqcs.js/">muqcs.js</a>
 
 Mucqs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator
 (named in an allusion to mush, Moser's Useless Shell).  It is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.  It has no graphical front end, does not leverage the GPU for computations, and does not import any special libraries.
