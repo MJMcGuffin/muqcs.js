@@ -1,10 +1,11 @@
 
+
 <html>
 <body>
 Open a console (in Chrome, this is done by selecting 'Developer Tools'). From the console prompt, you can call functions in the code and see output printed to the console.
 
 <p>
-Or go to the <a href="https://github.com/MJMcGuffin/muqcs.js">github repository</a> page.
+Or go to the <a href="https://github.com/MJMcGuffin/muqcs">github repository</a> page.
 </p>
 
 <script>
@@ -62,8 +63,9 @@ Or go to the <a href="https://github.com/MJMcGuffin/muqcs.js">github repository<
 let usingTextbookConvention = false;
 
 
-let decimalPrecision = 3;
+let defaultDecimalPrecision = 3;
 let precisionForApproximateComparison = 0.01;
+
 
 class Util {
     static assert( condition, message ) {
@@ -92,7 +94,7 @@ class Util {
 }
 
 class StringUtil {
-    static numToString(x) {
+    static numToString( x, decimalPrecision = defaultDecimalPrecision ) {
         let s1 = x.toString();
         let s2 = x.toFixed(decimalPrecision);
         if ( s1.length < s2.length ) return s1;
@@ -169,22 +171,22 @@ class Complex {
         this._r = re;
         this._i = im;
     }
-    toString() {
+    toString( decimalPrecision = defaultDecimalPrecision ) {
         if ( this._r === 0 ) {
             if ( this._i === 0 ) {
                return "0";
             }
             else {
-               return StringUtil.numToString(this._i) + "i";
+               return StringUtil.numToString(this._i,decimalPrecision) + "i";
             }
         }
         else {
             if ( this._i === 0 ) {
-               return StringUtil.numToString(this._r);
+               return StringUtil.numToString(this._r,decimalPrecision);
             }
             else {
-               let rs = StringUtil.numToString(this._r);
-               let is = StringUtil.numToString(this._i) + "i";
+               let rs = StringUtil.numToString(this._r,decimalPrecision);
+               let is = StringUtil.numToString(this._i,decimalPrecision) + "i";
                return is[0]==='-' ? ( rs+is ) : ( rs + "+" + is );
             }
         }
@@ -277,12 +279,15 @@ class CMatrix {
     }
     // Returns a multiline string, e.g.,
     // a 4x2 matrix might yield "[0,1+2i]\n[1,1   ]\n[0,2i  ]\n[1,0   ]"
-    toString( withBinaryStringPrefixes = false, suppressZeros=true/*makes large binary matrices easier to read*/, charToReplaceSuppressedZero='_' ) {
+    toString(
+        // this syntax allows for something similar to named parameters
+        { binaryPrefixes=false, decimalPrecision=defaultDecimalPrecision, suppressZeros=true/*makes large binary matrices easier to read*/, charToReplaceSuppressedZero='_' }={}
+    ) {
         let arrayOfPrefixStrings = [];
-        if ( withBinaryStringPrefixes ) {
+        if ( binaryPrefixes ) {
             let targetWidth = Math.ceil( Math.log2(this._rows) );
             for ( let r = 0; r < this._rows; ++r ) {
-                let binaryString = r.toString(2);
+                let binaryString = r.toString(2/*base 2 for binary*/);
                 binaryString = StringUtil.repeatString('0',targetWidth-binaryString.length) + binaryString; // pad with '0's
                 if ( usingTextbookConvention )
                     binaryString = '|' + StringUtil.reverseString( binaryString ) + '>';
@@ -295,7 +300,7 @@ class CMatrix {
         for ( let r = 0; r < this._rows; ++r ) {
             arrayOfArraysOfStrings.push( [] );
             for ( let c = 0; c < this._cols; ++c ) {
-                arrayOfArraysOfStrings[r].push( this.get(r,c).toString() );
+                arrayOfArraysOfStrings[r].push( this.get(r,c).toString(decimalPrecision) );
             }
         }
         let maxMaxWidth = 0;
@@ -318,7 +323,7 @@ class CMatrix {
         // so we can build the multiline string
         let returnValue = '';
         for ( let r = 0; r < this._rows; ++r ) {
-            if ( withBinaryStringPrefixes )
+            if ( binaryPrefixes )
                 returnValue += arrayOfPrefixStrings[r];
             returnValue += '[';
             for ( let c = 0; c < this._cols; ++c ) {
@@ -858,7 +863,7 @@ function performRegressionTest( verbose=true ) {
         " * ",
         input.toString(),
         " = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([ 0.707, 0, 0, 0.707 ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
@@ -885,7 +890,7 @@ function performRegressionTest( verbose=true ) {
         " * ",
         input.toString(),
         " = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([ 0,1,0,0 ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
@@ -912,7 +917,7 @@ function performRegressionTest( verbose=true ) {
         " * ",
         input.toString(),
         " = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([ 0,0,1,0 ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
@@ -939,7 +944,7 @@ function performRegressionTest( verbose=true ) {
         " * ",
         input.toString(),
         " = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([ new Complex(0,0.5),0.5,0.5,new Complex(0,0.5) ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
@@ -961,7 +966,7 @@ function performRegressionTest( verbose=true ) {
     output = CMatrix.transformStateVectorWith2x2( CMatrix.gate2x2rz90degrees,1,2,output,[[0,true]]);
     if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
         "... = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([ new Complex(0.5,0),new Complex(-0.35355,-0.35355),new Complex(0,-0.5),new Complex(-0.35355,-0.35355) ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
@@ -988,7 +993,7 @@ function performRegressionTest( verbose=true ) {
         " * ",
         input.toString(),
         " = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([ new Complex(0.42678, 0.67678),new Complex(0.28033, -0.17678),new Complex(0.42678, 0.17678),new Complex(0.07322, -0.17678) ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
@@ -1014,13 +1019,13 @@ function performRegressionTest( verbose=true ) {
     if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
         step3.toString(),
         " * ",
-        "...", // step2.toString(),
+        step2.toString({decimalPrecision:1}),
         " * ",
-        "...", // step1.toString(),
+        "...", // step1.toString({decimalPrecision:1}),
         " * ",
         input.toString(),
         " = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([
         new Complex(0.30178,0.47855),
@@ -1057,13 +1062,13 @@ function performRegressionTest( verbose=true ) {
     if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
         step3.toString(),
         " * ",
-        "...", // step2.toString(),
+        step2.toString({decimalPrecision:1}),
         " * ",
-        "...", // step1.toString(),
+        "...", // step1.toString({decimalPrecision:1}),
         " * ",
         input.toString(),
         " = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([
         new Complex(0.30178,0.47855),
@@ -1103,7 +1108,7 @@ function performRegressionTest( verbose=true ) {
         " -> ",
         step2.toString(),
         " -> ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'23abd31026' );
@@ -1132,7 +1137,7 @@ function performRegressionTest( verbose=true ) {
         " * ",
         input.toString(),
         " = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([
         new Complex(-0.35355, 0.35355),
@@ -1167,7 +1172,7 @@ function performRegressionTest( verbose=true ) {
         " * ",
         input.toString(),
         " = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([
         new Complex( 0.35355,-0.35355),
@@ -1201,7 +1206,7 @@ function performRegressionTest( verbose=true ) {
         " * ",
         input.toString(),
         " = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([
         new Complex(-0.25, 0.25),
@@ -1236,7 +1241,7 @@ function performRegressionTest( verbose=true ) {
         " -> ",
         step1.toString(),
         " -> ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'45cacd1026' );
@@ -1266,7 +1271,7 @@ function performRegressionTest( verbose=true ) {
     output = CMatrix.naryMult([ step5, step4, step3, step2, step1, input ]);
     if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
         "... = ",
-        output.toString(true)
+        output.toString({binaryPrefixes:true})
     ));
     expectedOutput = CMatrix.createColVector([
         new Complex( 0  , 0  ),
