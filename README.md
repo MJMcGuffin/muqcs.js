@@ -1,7 +1,7 @@
 # <a href="https://mjmcguffin.github.io/muqcs/">muqcs</a>
 
 Mucqs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator
-(named in an allusion to mush, Moser's Useless Shell).  It is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.  It has no graphical front end.
+(named in an allusion to mush, Moser's Useless Shell).  It is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.  It has no graphical front end, does not leverage the GPU for computations, and does not import any special libraries.
 
 The code is contained entirely in a single file, and defines a small class for complex numbers, a class for complex matrices (i.e., matrices storing complex numbers), and a few utility classes.  These classes take up less than a thousand lines of code.  The rest of the code consists of a regression test (in the function performRegressionTest()) followed by some performance tests.  Having a relatively small amount of source code means that the code can be more easily understood by others.
 
@@ -20,7 +20,7 @@ To create some matrices and print out their contents, we can do
 
 which produces this output:
 
-    .A 2x3 matrix filled with zeros:
+    A 2x3 matrix filled with zeros:
     [_,_,_]
     [_,_,_]
     A 2x2 matrix:
@@ -30,7 +30,7 @@ which produces this output:
     [5,10,15]
 
 Notice that the toString() method returns a string containing newline characters.  In the source code, this is referred to as a 'multiline string'.
-Next, we create a second matrix containing complex numbers, add the two matrices together, and print out the matrices and their sum:
+Next, we create a matrix containing complex numbers, add two matrices together, and print out the matrices and their sum:
 
     let m2 = CMatrix.create([[new Complex(0,1),new Complex(2,3)],[new Complex(5,7),new Complex(-1,-3)]]);
     let m3 = CMatrix.sum(m1,m2);
@@ -62,7 +62,7 @@ prints the 4x4 matrix for the CNOT gate:
     [_,_,1,_]
     [_,1,_,_]
 
-Notice that zeros are replaced with underscores to make it easier to read sparse matrices (to change this behavior, search for the suppressZeros option in the source code).  You might also notice that the matrix for the CNOT gate looks different from the way it is usually presented in textbooks or other sources.  This is related to the ordering of bits and ordering of tensor products.  Search for the usingTextbookConvention flag in the source code for comments that explain this, and set the value of that flag to true if you prefer the textbook ordering.  We can also call a method on a matrix (or a vector) to change this:
+Notice that zeros are replaced with underscores to make it easier for a human to read sparse matrices (to change this behavior, search for the suppressZeros option in the source code).  You might also notice that the matrix for the CNOT gate looks different from the way it is usually presented in textbooks or other sources.  This is related to the ordering of bits and ordering of tensor products.  Search for the usingTextbookConvention flag in the source code for comments that explain this, and set that flag to true if you prefer the textbook ordering.  We can also call a method on a matrix (or a vector) to change its ordering:
 
     console.log(CMatrix.gate4x4cnot.reverseEndianness().toString());
 
@@ -105,11 +105,21 @@ To simulate a circuit, there are two approaches.  The first involves storing one
     ));
 
 Each matrix takes up O((2^N)^2) space, and calling CMatrix.mult() on two such matrices would cost O((2^N)^3) time.
-However, the call to naryMult() above causes the matrices to be multiplied right-to-left, because naryMult() checks the sizes of the matrices to optimize the multiplication order, and the right-most matrix is just a column vector of size 2^N x 1.
+However, the call to naryMult() above causes the matrices to be multiplied right-to-left, because naryMult() checks the sizes of the matrices to optimize the multiplication order, and the right-most matrix passed to naryMult() is just a column vector of size 2^N x 1.  The matrix just before has size 2^N x 2^N, and multiplying the two together costs O((2^N)^2) and produces another column vector, which gets multiplied by the next matrix before them. 
 Hence, in this first approach, the space and time requirements of each step of the circuit are O((2^N)^2).
-Notice in the last call to toString() above, we pass in a true value; this causes bit strings to be printed in front of the matrix, as a reminder of the association between base states and matrix rows.
+Notice in the last call to toString() above, we pass in a true value; this causes bit strings like |000> to be printed in front of the matrix, as a reminder of the association between base states and matrix rows.
+The output is:
 
-A second approach to simulating the same circuit is to not store any explicit matrices of size 2^N x 2^N, which can be done like this:
+    [1,_,_,_,_,_,_,_]               [1]   |000>[0.302+0.479i]
+    [_,1,_,_,_,_,_,_]               [_]   |001>[0.198-0.125i]
+    [_,_,1,_,_,_,_,_]               [_]   |010>[0.302+0.125i]
+    [_,_,_,1,_,_,_,_] * ... * ... * [_] = |011>[0.052-0.125i]
+    [_,_,_,_,_,_,1,_]               [_]   |100>[0.302+0.125i]
+    [_,_,_,_,_,_,_,1]               [_]   |101>[0.052-0.125i]
+    [_,_,_,_,1,_,_,_]               [_]   |110>[0.302+0.479i]
+    [_,_,_,_,_,1,_,_]               [_]   |111>[0.198-0.125i]
+
+A second approach to simulating the same circuit is to not store any explicit matrices of size 2^N x 2^N.  Instead, we only store the state vector of size 2^N x 1, and update it for each stage of the circuit.  The following code does this:
 
     input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ] );
     step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,2,3,input,[]);
