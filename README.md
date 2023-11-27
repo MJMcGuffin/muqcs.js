@@ -62,7 +62,7 @@ prints the 4x4 matrix for the CNOT gate:
     [_,_,1,_]
     [_,1,_,_]
 
-Notice that zeros are replaced with underscores to make it easier for a human to read sparse matrices (to change this behavior, search for the suppressZeros option in the source code).  You might also notice that the matrix for the CNOT gate looks different from the way it is usually presented in textbooks or other sources.  This is related to the ordering of bits and ordering of tensor products.  Search for the usingTextbookConvention flag in the source code for comments that explain this, and set that flag to true if you prefer the textbook ordering.  We can also call a method on a matrix (or a vector) to change its ordering:
+Notice that zeros are replaced with underscores to make it easier for a human to read sparse matrices (to change this behavior, you can call toString({suppressZeros:false}) or toString({charToReplaceSuppressedZero:'.'})).  You might also notice that the matrix for the CNOT gate looks different from the way it is usually presented in textbooks or other sources.  This is related to the ordering of bits and ordering of tensor products.  Search for the usingTextbookConvention flag in the source code for comments that explain this, and set that flag to true if you prefer the textbook ordering.  We can also call a method on a matrix (or a vector) to change its ordering:
 
     console.log(CMatrix.gate4x4cnot.reverseEndianness().toString());
 
@@ -92,11 +92,10 @@ To simulate a circuit, there are two approaches.  The first involves storing one
     step2 = CMatrix.naryTensor( [ CMatrix.gate2x2identity /*q2*/, CMatrix.gate2x2fourthrootx /*q1*/, CMatrix.gate2x2identity /*q0*/ ] );
     step3 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 2, 1, 3 );
     output = CMatrix.naryMult([ step3, step2, step1, input ]);
-    decimalPrecision = 2;
     console.log(StringUtil.concatenateMultilineStrings(
         step3.toString(),
         " * ",
-        step2.toString(),
+        step2.toString({decimalPrecision:1}),
         " * ",
         "...", // step1.toString(),
         " * ",
@@ -111,14 +110,14 @@ Hence, in this first approach, the space and time requirements of each step of t
 Notice in the last call to toString() above, we pass in a true value; this causes bit strings like |000> to be printed in front of the matrix, as a reminder of the association between base states and matrix rows.
 The output is:
 
-    [1,_,_,_,_,_,_,_]   [0.85+0.35i,0         ,0.15-0.35i,0         ,0         ,0         ,0         ,0         ]         [1]   |000>[0.30+0.48i]
-    [_,1,_,_,_,_,_,_]   [0         ,0.85+0.35i,0         ,0.15-0.35i,0         ,0         ,0         ,0         ]         [_]   |001>[0.20-0.13i]
-    [_,_,1,_,_,_,_,_]   [0.15-0.35i,0         ,0.85+0.35i,0         ,0         ,0         ,0         ,0         ]         [_]   |010>[0.30+0.12i]
-    [_,_,_,1,_,_,_,_] * [0         ,0.15-0.35i,0         ,0.85+0.35i,0         ,0         ,0         ,0         ] * ... * [_] = |011>[0.05-0.13i]
-    [_,_,_,_,_,_,1,_]   [0         ,0         ,0         ,0         ,0.85+0.35i,0         ,0.15-0.35i,0         ]         [_]   |100>[0.30+0.12i]
-    [_,_,_,_,_,_,_,1]   [0         ,0         ,0         ,0         ,0         ,0.85+0.35i,0         ,0.15-0.35i]         [_]   |101>[0.05-0.13i]
-    [_,_,_,_,1,_,_,_]   [0         ,0         ,0         ,0         ,0.15-0.35i,0         ,0.85+0.35i,0         ]         [_]   |110>[0.30+0.48i]
-    [_,_,_,_,_,1,_,_]   [0         ,0         ,0         ,0         ,0         ,0.15-0.35i,0         ,0.85+0.35i]         [_]   |111>[0.20-0.13i]
+    [1,_,_,_,_,_,_,_]   [0.9+0.4i,0       ,0.1-0.4i,0       ,0       ,0       ,0       ,0       ]         [1]   [0.302+0.479i]
+    [_,1,_,_,_,_,_,_]   [0       ,0.9+0.4i,0       ,0.1-0.4i,0       ,0       ,0       ,0       ]         [_]   [0.198-0.125i]
+    [_,_,1,_,_,_,_,_]   [0.1-0.4i,0       ,0.9+0.4i,0       ,0       ,0       ,0       ,0       ]         [_]   [0.302+0.125i]
+    [_,_,_,1,_,_,_,_] * [0       ,0.1-0.4i,0       ,0.9+0.4i,0       ,0       ,0       ,0       ] * ... * [_] = [0.052-0.125i]
+    [_,_,_,_,_,_,1,_]   [0       ,0       ,0       ,0       ,0.9+0.4i,0       ,0.1-0.4i,0       ]         [_]   [0.302+0.125i]
+    [_,_,_,_,_,_,_,1]   [0       ,0       ,0       ,0       ,0       ,0.9+0.4i,0       ,0.1-0.4i]         [_]   [0.052-0.125i]
+    [_,_,_,_,1,_,_,_]   [0       ,0       ,0       ,0       ,0.1-0.4i,0       ,0.9+0.4i,0       ]         [_]   [0.302+0.479i]
+    [_,_,_,_,_,1,_,_]   [0       ,0       ,0       ,0       ,0       ,0.1-0.4i,0       ,0.9+0.4i]         [_]   [0.198-0.125i]
 
 A second approach to simulating the same circuit is to not store any explicit matrices of size 2^N x 2^N.  Instead, we only store the state vector of size 2^N x 1, and update it for each stage of the circuit.  The following code does this:
 
