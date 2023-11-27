@@ -93,6 +93,7 @@ Each matrix takes up O((2^N)^2) space, and calling CMatrix.mult() on two such ma
 However, the call to naryMult() above causes the matrices to be multiplied right-to-left, because naryMult() checks the sizes of the matrices to optimize the multiplication order, and the right-most matrix is just a column vector of size 2^N x 1.
 Hence, in this first approach, the space and time requirements of each step of the circuit are O((2^N)^2).
 Notice in the last call to toString() above, we pass in a true value; this causes bit strings to be printed in front of the matrix, as a reminder of the association between base states and matrix rows.
+
 A second approach to simulating the same circuit is to not store any explicit matrices of size 2^N x 2^N, which can be done like this:
 
     // Simulate the same circuit, but this time without using explicit large matrices.
@@ -119,7 +120,8 @@ A second approach to simulating the same circuit is to not store any explicit ma
         output.toString(true)
     ));
 
-In this second approach, the space and time requirements of each step of the circuit are O(2^N).
+In this second approach, the space and time requirements of each step of the circuit are O(2^N), so, much better than in the first approach.
+The magic happens in the CMatrix.transformStateVectorWith2x2() method, which is based on Quirk’s source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js 
 
 
 Limitations:
