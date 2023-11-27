@@ -1,20 +1,33 @@
-# muqcs
-Mucqs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator
-(named in an allusion to mush, Moser's Useless Shell).  It is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.
+# <a href="https://mjmcguffin.github.io/muqcs/">muqcs</a>
 
-The code is contained entirely in a single file, and defines a small class for complex numbers, a class for complex matrices (i.e., matrices storing complex numbers), and a few utility classes.
+Mucqs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator
+(named in an allusion to mush, Moser's Useless Shell).  It is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.  It has no graphical front end.
+
+The code is contained entirely in a single file, and defines a small class for complex numbers, a class for complex matrices (i.e., matrices storing complex numbers), and a few utility classes.  These classes take up less than a thousand lines of code.  The rest of the code consists of a regression test (in the function performRegressionTest()) followed by some performance tests.  Having a relatively small amount of source code means that the code can be more easily understood by others.
 
 To run the code, load the html file into a browser like Chrome, and then open a console (in Chrome, this is done by selecting 'Developer Tools').  From the console prompt, you can call functions in the code and see output printed to the console.
 
-For example, to create a matrix and print out its contents, you can do
+**Creating and Manipulating Matrices**
 
-    let m1 = CMatrix.create([[1,2],[3,4]]);
-    console.log(m1.toString());
+To create some matrices and print out their contents, we can do
+
+    let m0 = new CMatrix(2,3);
+    console.log("A 2x3 matrix filled with zeros:\n" + m0.toString());
+    let m1 = CMatrix.create([[10,20],[30,40]]);
+    console.log("A 2x2 matrix:\n" + m1.toString());
+    let c0 = CMatrix.createColVector([5,10,15]);
+    console.log("The transpose of a column vector is a row vector:\n" + c0.transpose().toString());
 
 which produces this output:
 
-    [1,2]
-    [3,4]
+    .A 2x3 matrix filled with zeros:
+    [_,_,_]
+    [_,_,_]
+    A 2x2 matrix:
+    [10,20]
+    [30,40]
+    The transpose of a column vector is a row vector:
+    [5,10,15]
 
 Notice that the toString() method returns a string containing newline characters.  In the source code, this is referred to as a 'multiline string'.
 Next, we create a second matrix containing complex numbers, add the two matrices together, and print out the matrices and their sum:
@@ -28,7 +41,7 @@ which produces this output:
     [1,2] + [1i  ,2+3i ] = [1+1i,4+3i]
     [3,4]   [5+7i,-1-3i]   [8+7i,3-3i]
 
-Similarly, there are methods in the CMatrix class for subtracting matrices (diff(m1,m2)), multiplying matrices (mult(m1,m2) and naryMult([m1,m2,...])), and for computing their tensor product (tensor(m1,m2) and naryTensor([m1,m2,...])).
+Similarly, there are static methods in the CMatrix class for subtracting matrices (diff(m1,m2)), multiplying matrices (mult(m1,m2) and naryMult([m1,m2,...])), and for computing their tensor product (tensor(m1,m2) and naryTensor([m1,m2,...])).
 The CMatrix class also has some predefined vectors and matrices.  For example,
 
     console.log(CMatrix.ketOne.toString());
@@ -60,7 +73,9 @@ prints the 4x4 matrix for the CNOT gate in its more usual form:
     [_,_,_,1]
     [_,_,1,_]
 
-To simulate a circuit, there are two approaches.  The first involves staring one explicit matrix for each stage of the circuit.  In a circuit with N qubits, the matrices will have size 2^N x 2^N.  Here we see an example of how to simulate a 3-qubit circuit with this first approach:
+**Simulating a Quantum Circuit**
+
+To simulate a circuit, there are two approaches.  The first involves storing one explicit matrix for each stage of the circuit.  In a circuit with N qubits, the matrices will have size 2^N x 2^N.  Here we see an example of how to simulate a 3-qubit circuit with this first approach:
 
     // Simulate a circuit on three qubits
     // equivalent to
@@ -96,14 +111,6 @@ Notice in the last call to toString() above, we pass in a true value; this cause
 
 A second approach to simulating the same circuit is to not store any explicit matrices of size 2^N x 2^N, which can be done like this:
 
-    // Simulate the same circuit, but this time without using explicit large matrices.
-    //
-    // qubit q0 |0>----(x^0.25)-------------------------
-    //
-    // qubit q1 |0>----(y^0.25)-----(x^0.25)----(+)-----
-    //                                           |
-    // qubit q2 |0>-------H----------------------o------
-    //
     input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ] );
     step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,2,3,input,[]);
     step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrooty,1,3,step1,[]);
@@ -123,8 +130,11 @@ A second approach to simulating the same circuit is to not store any explicit ma
 In this second approach, the space and time requirements of each step of the circuit are O(2^N), so, much better than in the first approach.
 The magic happens in the CMatrix.transformStateVectorWith2x2() method, which is based on Quirk’s source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js 
 
+**Conventions**
 
-Limitations:
+In a circuit with N qubits, the wires are numbered 0 for the top wire to (N-1) for the bottom wire.  The top wire encodes the Least-Significant Bit (LSB).
+
+**Limitations**
 
 The code can generate a swap matrix via the CMatrix.wireSwap() method, but this is only usable with the first approach for simulation outlined above.  With the second simulation approach, there is no support for swap gates.  And there is no support at all for controlled swap gates, in either approach.
 
