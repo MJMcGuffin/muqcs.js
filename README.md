@@ -38,8 +38,8 @@ Next, we create a matrix containing complex numbers, add two matrices together, 
 
 which produces this output:
 
-    [1,2] + [1i  ,2+3i ] = [1+1i,4+3i]
-    [3,4]   [5+7i,-1-3i]   [8+7i,3-3i]
+    [10,20] + [1i  ,2+3i ] = [10+1i,22+3i]
+    [30,40]   [5+7i,-1-3i]   [35+7i,39-3i]
 
 Similarly, there are static methods in the CMatrix class for subtracting matrices (diff(m1,m2)), multiplying matrices (mult(m1,m2) and naryMult([m1,m2,...])), and for computing their tensor product (tensor(m1,m2) and naryTensor([m1,m2,...])).
 The CMatrix class also has some predefined vectors and matrices.  For example,
