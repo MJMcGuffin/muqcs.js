@@ -94,14 +94,10 @@ To simulate a circuit, there are two approaches.  The first involves storing one
     output = CMatrix.naryMult([ step3, step2, step1, input ]);
     console.log(StringUtil.concatenateMultilineStrings(
         step3.toString(),
-        " * ",
-        step2.toString({decimalPrecision:1}),
-        " * ",
-        "...", // step1.toString({decimalPrecision:1}),
-        " * ",
-        input.toString(),
-        " = ",
-        output.toString({binaryPrefixes:true})
+        " * ", step2.toString({decimalPrecision:1}),
+        " * ", "...", // step1.toString({decimalPrecision:1}),
+        " * ", input.toString(),
+        " = ", output.toString({binaryPrefixes:true})
     ));
 
 Each matrix takes up O((2^N)^2) space, and calling CMatrix.mult() on two such matrices would cost O((2^N)^3) time.
@@ -129,12 +125,9 @@ A second approach to simulating the same circuit is to not store any explicit ma
     output = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,1,3,step2,[[2,true]]);
     console.log(StringUtil.concatenateMultilineStrings(
         input.toString(),
-        " -> ",
-        step1.toString(),
-        " -> ",
-        step2.toString(),
-        " -> ",
-        output.toString({binaryPrefixes:true})
+        " -> ", step1.toString(),
+        " -> ", step2.toString(),
+        " -> ", output.toString({binaryPrefixes:true})
     ));
 
 In this second approach, the space and time requirements of each step of the circuit are O(2^N), so, much better than in the first approach.
