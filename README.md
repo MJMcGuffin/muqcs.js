@@ -140,6 +140,8 @@ A second approach to simulating the same circuit is to not store any explicit ma
 In this second approach, the space and time requirements of each step of the circuit are O(2^N), so, much better than in the first approach.
 The magic happens in the CMatrix.transformStateVectorWith2x2() method, which is based on Quirk’s source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js 
 
+More code examples appear in the slides under the doc folder of the repository.
+
 **Conventions**
 
 In a circuit with N qubits, the wires are numbered 0 for the top wire to (N-1) for the bottom wire.  The top wire encodes the Least-Significant Bit (LSB).
