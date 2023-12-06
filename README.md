@@ -11,7 +11,7 @@ To run the code, load the html file into a browser like Chrome, and then open a 
 
 To create some matrices and print out their contents, we can do
 
-    let m0 = new CMatrix(2,3);  # CMatrix means 'complex matrix', a matrix with complex entries
+    let m0 = new CMatrix(2,3);  // CMatrix means 'complex matrix', a matrix with complex entries
     console.log("A 2x3 matrix filled with zeros:\n" + m0.toString());
     let m1 = CMatrix.create([[10,20],[30,40]]);
     console.log("A 2x2 matrix:\n" + m1.toString());
@@ -144,7 +144,7 @@ the phase, Bloch sphere coordinates, and purity (also called 'reduced purity' or
 The Bloch sphere coordinates are a way to describe the qubit's 'local state'.
 Purity is a quantity varying from 0.5 to 1.0, indicating how entangled the qubit is with the rest of the system:
 0.5 means maximally entangled, 1.0 means not entangled, and an intermediate value means partially mixed.
-Here is an example computing these statistics in muqcs:
+Here is an example computing these statistics with muqcs:
 
     let N = 4; // total qubits
     input = CMatrix.naryTensor( [ CMatrix.ketZero /*q3*/, CMatrix.ketZero /*q2*/,
@@ -167,7 +167,7 @@ Here is an example computing these statistics in muqcs:
 
 ![More qubit statistics in Muqcs](/doc/qubit-stats-muqcs-2.png)
 
-... and now the same circuit in IBM Quantum Composer:
+... and now the same circuit in <a href="https://quantum-computing.ibm.com/composer">IBM Quantum Composer</a>:
 
     // Copy-paste the below instructions into IBM’s website at https://quantum-computing.ibm.com/composer to recreate the circuit
 
