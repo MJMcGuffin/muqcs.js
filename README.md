@@ -1,6 +1,6 @@
 # <a href="https://mjmcguffin.github.io/muqcs.js/">muqcs.js</a>
 
-Mucqs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator
+Muqcs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator
 (named in an allusion to mush, Moser's Useless SHell).  It is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.  It has no graphical front end, does not leverage the GPU for computations, and does not import any special libraries, making it much easier for others to understand the core algorithms.
 
 The code is contained entirely in a single file, and defines a small class for complex numbers, a class for complex matrices (i.e., matrices storing complex numbers), and a few utility classes.  These classes take up less than a thousand lines of code.  The rest of the code consists of a regression test (in the function performRegressionTest()) followed by some performance tests.  Having a relatively small amount of source code means that the code can be more easily understood by others.
@@ -11,7 +11,7 @@ To run the code, load the html file into a browser like Chrome, and then open a 
 
 To create some matrices and print out their contents, we can do
 
-    let m0 = new CMatrix(2,3);
+    let m0 = new CMatrix(2,3);  # CMatrix means 'complex matrix', a matrix with complex entries
     console.log("A 2x3 matrix filled with zeros:\n" + m0.toString());
     let m1 = CMatrix.create([[10,20],[30,40]]);
     console.log("A 2x2 matrix:\n" + m1.toString());
@@ -100,7 +100,7 @@ To simulate a circuit, there are two approaches.  The first involves storing one
         " = ", output.toString({binaryPrefixes:true})
     ));
 
-Each matrix takes up O((2^N)^2) space, and calling CMatrix.mult() on two such matrices would cost O((2^N)^3) time.
+Each matrix takes up O((2^N)^2) space (half a gigabyte for N=13 qubits, assuming 4 bytes per float), and calling CMatrix.mult() on two such matrices would cost O((2^N)^3) time.
 However, the call to naryMult() above causes the matrices to be multiplied right-to-left, because naryMult() checks the sizes of the matrices to optimize the multiplication order, and the right-most matrix passed to naryMult() is just a column vector of size 2^N x 1.  The matrix just before that has size 2^N x 2^N, and multiplying the two together costs O((2^N)^2) and produces another column vector, which gets multiplied by the next matrix before them, etc. 
 Hence, in this first approach, the space and time requirements of each step of the circuit are O((2^N)^2).
 Notice in the last call to toString() above, we pass in {binaryPrefixes:true}; this causes bit strings like |000> to be printed in front of the matrix, as a reminder of the association between base states and matrix rows.
@@ -135,11 +135,70 @@ The magic happens in the CMatrix.transformStateVectorWith2x2() method, which is 
 
 More explanation and code examples appear in the slides under the doc folder of the repository.
 
+**Circuit and Qubit Statistics**
+
+From the amplitudes output by muqcs, we can easily find the probability of each computational basis state.
+In addition, muqcs can compute the (2^N x 2^N) density matrix for a give state vector,
+and also compute the (2x2) reduced density matrix (using the partial trace) for each qubit, from which we can compute
+the phase, Bloch sphere coordinates, and purity (also called 'reduced purity' or 'purity of reduced state') for each qubit.
+The Bloch sphere coordinates are a way to describe the qubit's 'local state'.
+Purity is a quantity varying from 0.5 to 1.0, indicating how entangled the qubit is with the rest of the system:
+0.5 means maximally entangled, 1.0 means not entangled, and an intermediate value means partially mixed.
+Here is an example computing these statistics in muqcs:
+
+    let N = 4; // total qubits
+    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q3*/, CMatrix.ketZero /*q2*/,
+                                  CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ] );
+    step1 = CMatrix.naryTensor( [ CMatrix.gate2x2ry(45) /*q3*/, CMatrix.gate2x2rx90degrees /*q2*/,
+                                  CMatrix.gate2x2rx90degrees /*q1*/, CMatrix.gate2x2rx(45) /*q0*/ ] );
+    step2 = CMatrix.naryTensor( [ CMatrix.gate2x2rx(45) /*q3*/, CMatrix.gate2x2rz(120) /*q2*/,
+                                  CMatrix.gate2x2rz(100) /*q1*/, CMatrix.gate2x2identity /*q0*/ ] );
+    output = CMatrix.naryMult([ step2, step1, input ]);
+    output = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rz90degrees,2,N,output,[[1,true]]/*list of control qubits*/);
+    output = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2ry(45),2,N,output,[[3,true]]/*list of control qubits*/);
+    baseStateProbabilities = new CMatrix( output._rows, 1 );
+    for ( let i=0; i < output._rows; ++i ) baseStateProbabilities.set( i, 0, output.get(i,0).mag()**2 );
+    console.log(StringUtil.concatenateMultilineStrings(
+        "Output: ", output.toString({binaryPrefixes:true}), ", Probabilities: ", baseStateProbabilities.toString()
+    ));
+    CMatrix.printAnalysisOfEachQubit(N,output);
+
+![Qubit statistics in Muqcs](/doc/qubit-stats-muqcs-1.png)
+
+![More qubit statistics in Muqcs](/doc/qubit-stats-muqcs-2.png)
+
+... and now the same circuit in IBM Quantum Composer:
+
+    // Copy-paste the below instructions into IBM’s website at https://quantum-computing.ibm.com/composer to recreate the circuit
+
+    OPENQASM 2.0;
+    include "qelib1.inc";
+
+    qreg q[4];
+    rx(pi / 2) q[1];
+    rx(pi / 2) q[2];
+    rx(pi/4) q[0];
+    ry(pi/4) q[3];
+    rz(1.7453292519943295) q[1];
+    rz(2.0943951023931953) q[2];
+    rx(pi/4) q[3];
+    crz(pi / 2) q[1], q[2];
+    cry(pi/4) q[3], q[2];
+
+![Qubit statistics in IBM Quantum Composer](/doc/qubit-stats-ibm-quantum-composer.png)
+
+... and the same circuit in Quirk:
+
+https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B%7B%22id%22%3A%22Rxft%22%2C%22arg%22%3A%22pi%2F4%22%7D%2C%7B%22id%22%3A%22Rxft%22%2C%22arg%22%3A%22pi%2F2%22%7D%2C%7B%22id%22%3A%22Rxft%22%2C%22arg%22%3A%22pi%2F2%22%7D%2C%7B%22id%22%3A%22Ryft%22%2C%22arg%22%3A%22pi%2F4%22%7D%5D%2C%5B1%2C%7B%22id%22%3A%22Rzft%22%2C%22arg%22%3A%221.7453292519943295%22%7D%2C%7B%22id%22%3A%22Rzft%22%2C%22arg%22%3A%222.0943951023931953%22%7D%2C%7B%22id%22%3A%22Rxft%22%2C%22arg%22%3A%22pi%2F4%22%7D%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B1%2C%22%E2%80%A2%22%2C%7B%22id%22%3A%22Rzft%22%2C%22arg%22%3A%22pi%2F2%22%7D%5D%2C%5B1%2C1%2C%7B%22id%22%3A%22Ryft%22%2C%22arg%22%3A%22pi%2F4%22%7D%2C%22%E2%80%A2%22%5D%2C%5B%22Chance4%22%5D%2C%5B%22Density4%22%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%22Density%22%2C%22Density%22%2C%22Density%22%2C%22Density%22%5D%5D%7D
+
+![Qubit statistics in Quirk](/doc/qubit-stats-quirk.png)
+
+
 **Conventions**
 
 In a circuit with N qubits, the wires are numbered 0 for the top wire to (N-1) for the bottom wire.  The top wire encodes the Least-Significant Bit (LSB).
 
 **Limitations**
 
-The code can generate a swap matrix via the CMatrix.wireSwap() method, but this is only usable with the first approach for simulation outlined above.  With the second simulation approach, there is no support for swap gates.  And there is no support at all for controlled swap gates, in either approach.
+There is currently no support for controlled swap gates.
 

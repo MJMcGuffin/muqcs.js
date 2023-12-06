@@ -1,5 +1,4 @@
 
-
 <html>
 <body>
 Open a console (in Chrome, this is done by selecting 'Developer Tools'). From the console prompt, you can call functions in the code and see output printed to the console.
@@ -90,6 +89,21 @@ class Util {
         }
         Util.assert( bit === n/*this should happen because n should be a power of 2*/, `Util.reverseEndianness(): unexpected condition, n===${n}`);
         return result;
+    }
+    // Returns angle in [0,2 pi] of the given point in the cartesian plane measured counterclockwise+ with respect to x+
+    static angleIn2D(x,y) {
+        let hypotenuse = Math.sqrt(x*x+y*y);
+        let angle = 0;
+        if ( hypotenuse > 0 ) {
+            let sine = y / hypotenuse;
+            if ( sine>= 1 ) angle = Math.PI/2;
+            else if ( sine<=-1) angle = -Math.PI/2;
+            else angle = Math.asin(sine);
+
+            if ( x < 0 ) angle = Math.PI - angle;
+            if ( angle < 0 ) angle += 2*Math.PI; // ensures angle is in [0,2*M_PI]
+        }
+        return angle;
     }
 }
 
@@ -195,6 +209,19 @@ class Complex {
     copy() {
         return new Complex( this._r, this._i );
     }
+    conjugate() {
+        return new Complex( this._r, - this._i );
+    }
+    mag() { // magnitude, also known as absolute value or modulus
+        return Math.sqrt( this._r * this._r + this._i * this._i );
+    }
+    magSquared() { // magnitude squared
+        return this._r * this._r + this._i * this._i;
+    }
+    arg() { // argument, also called phase, i.e. the angle of the complex number; always in [0,2 pi]
+        return Util.angleIn2D( this._r, this._i );
+    }
+
 
     // Returns the sum of the two given complex numbers.
     static sum(c1,c2) {
@@ -263,6 +290,25 @@ class CMatrix {
             }
         }
         return M;
+    }
+    // Returns the transpose of the matrix, also known as adjoint matrix or transjugate
+    conjugateTranspose() {
+        let M = new CMatrix( this._cols, this._rows );
+        for ( let r = 0; r < this._rows; ++r ) {
+            for ( let c = 0; c < this._cols; ++c ) {
+                M.set( c, r, this.get(r,c).conjugate() );
+            }
+        }
+        return M;
+    }
+    // Returns a complex number equal to the trace (i.e., sum of diagonal elements) of a square matrix
+    trace() {
+        Util.assert( this._rows === this._cols, "CMatrix.trace(): matrix is not square" );
+        let returnValue = new Complex();
+        for ( let r = 0; r < this._rows; ++r ) {
+            returnValue = Complex.sum( returnValue, this.get(r,r) );
+        }
+        return returnValue;
     }
     reverseEndianness( actuallyReverseThings=true ) { // should only be called on a row vector, column vector, or matrix whose dimensions are powers of 2
         if ( ! actuallyReverseThings )
@@ -532,6 +578,62 @@ class CMatrix {
             M.set(k,k,1);
         return M;
     }
+    static gate2x2globalPhaseChange( angleInDegrees ) {
+        let angleInRadians = angleInDegrees / 180.0 * Math.PI;
+        let globalPhaseChange = new Complex( Math.cos(angleInRadians), Math.sin(angleInRadians) );
+        return CMatrix.create([[globalPhaseChange,0],[0,globalPhaseChange]]);
+    }
+    // Returns a 2x2 matrix that rotates around an axis of the Bloch sphere.
+    // With a 180 degree angle, this is equivalent to a Pauli X gate (also called NOT gate)
+    // but differs by a global phase.
+    // More particularly, the following print statements should output the same thing:
+    //   console.log(CMatrix.mult(CMatrix.gate2x2rx(180),CMatrix.gate2x2globalPhaseChange(90)).toString());
+    //   console.log(CMatrix.gate2x2not.toString());
+    //
+    static gate2x2rx( angleInDegrees ) {
+        let angleInRadians = angleInDegrees / 180.0 * Math.PI;
+        let halfAngle = angleInRadians / 2;
+        let sine = Math.sin( halfAngle );
+        let cosine = Math.cos( halfAngle );
+        return CMatrix.create( [
+            [ new Complex(cosine,0), new Complex(0,-sine) ],
+            [ new Complex(0,-sine),  new Complex(cosine,0) ],
+        ] );
+    }
+    // Returns a 2x2 matrix that rotates around an axis of the Bloch sphere.
+    // With a 180 degree angle, this is equivalent to a Pauli Y gate
+    // but differs by a global phase.
+    // More particularly, the following print statements should output the same thing:
+    //   console.log(CMatrix.mult(CMatrix.gate2x2ry(180),CMatrix.gate2x2globalPhaseChange(90)).toString());
+    //   console.log(CMatrix.gate2x2y.toString());
+    //
+    static gate2x2ry( angleInDegrees ) {
+        let angleInRadians = angleInDegrees / 180.0 * Math.PI;
+        let halfAngle = angleInRadians / 2;
+        let sine = Math.sin( halfAngle );
+        let cosine = Math.cos( halfAngle );
+        return CMatrix.create( [
+            [ new Complex(cosine,0), new Complex(-sine,0) ],
+            [ new Complex(sine,0),  new Complex(cosine,0) ],
+        ] );
+    }
+    // Returns a 2x2 matrix that rotates around an axis of the Bloch sphere.
+    // With a 180 degree angle, this is equivalent to a Pauli Z gate
+    // but differs by a global phase.
+    // More particularly, the following print statements should output the same thing:
+    //   console.log(CMatrix.mult(CMatrix.gate2x2rz(180),CMatrix.gate2x2globalPhaseChange(90)).toString());
+    //   console.log(CMatrix.gate2x2z.toString());
+    //
+    static gate2x2rz( angleInDegrees ) {
+        let angleInRadians = angleInDegrees / 180.0 * Math.PI;
+        let halfAngle = angleInRadians / 2;
+        let sine = Math.sin( halfAngle );
+        let cosine = Math.cos( halfAngle );
+        return CMatrix.create( [
+            [ new Complex(cosine,-sine), new Complex(0,0) ],
+            [ new Complex(0,0),  new Complex(cosine,sine) ],
+        ] );
+    }
     // Returns a matrix for swapping wires i and j in a quantum circuit with n wires.
     // i and j are zero-based, i.e., they are between 0 and (n-1).
     // The matrix that is returned has size (2**n)x(2**n)
@@ -718,7 +820,7 @@ class CMatrix {
     }
     // Returns a new state vector.
     // Avoids computing an explicit swap matrix of size (2**n)x(2**n), saving a lot of memory and time.
-    static transformStateVectorWithSwap( // TODO test this; seems to work well with symmetric swaps on even number of qubits
+    static transformStateVectorWithSwap( // TODO this needs more testing
         i, // index of 1st wire on which to apply the swap
         j, // index of 2nd wire on which to apply the swap
         n, // number of qubits in the circuit
@@ -768,6 +870,177 @@ class CMatrix {
         return result;
     }
 
+    // Returns a matrix of size (2**n)x(2**n)
+    static computeDensityMatrix(
+        n, // number of qubits in the circuit
+        stateVector // a matrix of size (2**n)x1, i.e. a column vector
+    ) {
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "CMatrix.computeDensityMatrix(): state vector has invalid size" );
+        return CMatrix.mult( stateVector, stateVector.conjugateTranspose() );
+    }
+    // Returns a 2x2 matrix
+    static computeReducedDensityMatrixForOneQubit(
+        i, // the qubit of interest; we trace out the other qubits
+        n, // number of qubits in the circuit
+        densityMatrix // a matrix of size (2**n)x(2**n)
+    ) {
+        let twoN = 2**n;
+        Util.assert( 0<=i && i<n, "CMatrix.computeReducedDensityMatrixForOneQubit(): invalid index" );
+        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "CMatrix.computeReducedDensityMatrixForOneQubit(): density matrix has invalid size" );
+        let rdm = new CMatrix(2,2); // reduced density matrix
+        let mask = ~(1 << i);
+        for ( let row = 0; row < twoN; ++row ) {
+            let row_bit = ( row >> i ) & 1; // ith bit in row
+            for ( let col = 0; col < twoN; ++col ) {
+                if ( (row & mask) === (col & mask) ) {
+                    let col_bit = ( col >> i ) & 1; // ith bit in col
+                    rdm.set( row_bit, col_bit, Complex.sum( rdm.get(row_bit,col_bit), densityMatrix.get(row,col) ));
+                }
+            }
+        }
+        return rdm;
+    }
+    // returns an object containing statistics
+    static computeStatsFor2x2DensityMatrix(
+        dm // a 2x2 density matrix for a single qubit
+    ) {
+        Util.assert( dm._rows===2 && dm._cols===2, "CMatrix.computeStatsFor2x2DensityMatrix(): matrix is not 2x2");
+        /*
+        Assume the local state of the qubit can be expressed as
+           |psi> = alpha |0> + e^(i phase) (1-alpha^2)^0.5 |1>
+                 = cos(theta/2) |0> + e^(i phase) sin(theta/2) |1>
+        where alpha is nonnegative real, theta is in [0,pi], phase is in [0,2pi]
+        Note that we're assuming that we could apply a global phase to make the complex amplitude in front of |0> nonnegative real.
+        Then, in the Bloch sphere space, we will have
+           x = (sin theta)(cos phase)
+           y = (sin theta)(sin phase)
+           z = (cos theta)
+        and the 2x2 density matrix for the qubit will be
+
+           |psi><psi| = [ cos(theta/2)             ] * [ cos(theta/2)   e^(-i phase) sin(theta/2) ]
+                        [ e^(i phase) sin(theta/2) ]
+
+                      = [ cos^2(theta/2)                          e^(-i phase) sin(theta/2) cos(theta/2) ]
+                        [ e^(i phase) sin(theta/2) cos(theta/2)   sin^2(theta/2)                         ]
+
+                      = [ (1+cos theta)/2                                     (cos phase - i sin phase)((1-cos^2(theta))^0.5)/2 ]
+                        [ (cos phase + i sin phase)((1-cos^2(theta))^0.5)/2   (1-cos theta)/2                                   ]
+
+                      = [ (1+z)/2                                  (cos phase - i sin phase)(sin theta)/2 ]
+                        [ (cos phase + i sin phase)(sin theta)/2   (1-z)/2                                ]
+
+                      = [ (1+z)/2       (x - i y)/2 ]
+                        [ (x + i y)/2   (1-z)/2     ]
+
+        which hints at how to recover x, y, z from the entries of the 2x2 matrix.
+        */
+
+        let [ar, ai, br, bi, cr, ci, dr, di] = dm._m;
+        let x = br + cr;
+        let y = ci - bi;
+        let z = ar - dr;
+        let radius = Math.sqrt(x*x + y*y + z*z);
+        let phase = Util.angleIn2D(x,y);
+        let theta = Util.angleIn2D(z,Math.sqrt(x*x+y*y));
+        let probabilityOfOne = (1-z)/2;
+        let purity = CMatrix.mult( dm, dm ).trace();
+        let cosine_theta_over_2 = Math.cos(theta/2);
+        let sine_theta_over_2 = Math.sin(theta/2);
+        let psi_amplitude_0 = new Complex( cosine_theta_over_2, 0 );
+        let psi_amplitude_1 = new Complex( Math.cos(phase)*sine_theta_over_2, Math.sin(phase)*sine_theta_over_2 );
+
+        return {
+            x:x, y:y, z:z, radius:radius, phase:phase, theta:theta,
+            probabilityOfOne:probabilityOfOne,
+            purity:purity,
+            psi_amplitude_0:psi_amplitude_0, psi_amplitude_1:psi_amplitude_1
+        };
+    }
+    // returns an array of objects, one for each qubit
+    static analyzeEachQubit(
+        n, // number of qubits in the circuit
+        densityMatrix // a matrix of size (2**n)x(2**n)
+    ) {
+        let twoN = 2**n;
+        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "CMatrix.analyzeEachQubit(): density matrix has invalid size" );
+
+        let results = [];
+        for ( let i = 0; i < n; ++i ) {
+            let RDM = CMatrix.computeReducedDensityMatrixForOneQubit(i,n,densityMatrix);
+            let S = CMatrix.computeStatsFor2x2DensityMatrix( RDM );
+            S.reducedDensityMatrix = RDM;
+            results.push( S );
+        }
+        return results;
+    }
+    static printAnalysisOfEachQubit(
+        n, // number of qubits in the circuit
+        stateVector // a matrix of size (2**n)x1, i.e. a column vector
+    ) {
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "CMatrix.printAnalysisOfEachQubit(): state vector has invalid size" );
+        let DM = CMatrix.computeDensityMatrix( n, stateVector );
+        console.log("Density matrix is\n" + DM.toString({decimalPrecision:2}) + "\nwith trace " + DM.trace() + " and purity " + (CMatrix.mult(DM,DM)).trace() );
+        let stats = CMatrix.analyzeEachQubit(n,DM);
+        for ( let i = 0; i < n; ++i ) {
+            let RDM = stats[i].reducedDensityMatrix;
+            console.log(StringUtil.concatenateMultilineStrings(`Reduced density matrix for qubit ${i} is `, RDM.toString(), " with trace " + RDM.trace() + " and purity " + (CMatrix.mult(RDM,RDM)).trace() ));
+        }
+        for ( let i = 0; i < n; ++i ) {
+            let S = stats[i];
+            let phaseInDegrees = S.phase / Math.PI * 180;
+            let thetaInDegrees = S.theta / Math.PI * 180;
+            console.log(
+                `q${i}: (`
+                    +"x="+StringUtil.numToString(S.x)+",y="+StringUtil.numToString(S.y)+",z="+StringUtil.numToString(S.z)
+                +") ("
+                    +"r="+StringUtil.numToString(S.radius)+","
+                    +"phase="+StringUtil.numToString(S.phase)+"rad="+StringUtil.numToString(phaseInDegrees)+"deg,"
+                    +"theta="+StringUtil.numToString(S.theta)+"rad="+StringUtil.numToString(thetaInDegrees)+"deg"
+                +"), probability(|1>)=" + StringUtil.numToString(S.probabilityOfOne)
+                +", purity=" + S.purity.toString()
+                +", (" + S.psi_amplitude_0.toString() + ")|0>+(" + S.psi_amplitude_1.toString() + ")|1>"
+            );
+        }
+    }
+    // Returns a matrix of size (n)x(n), whose upper triangular half contains correlation values for pairs of qubits.
+    // Each cell (row=i,column=j) of the matrix contains a real number in [-1,1] describing the correlation between qubits i,j
+    // (where i>j).
+    // The values -1, 0, +1 correspond to perfectly inverse correlation (i.e., when measured, qubits i,j always have opposite values),
+    // uncorrelated, and perfectly positive correlation (i.e., when measured, the two qubits are always equal), respectively.
+    // The diagonal and lower triangular half of the returned matrix contain zeros.
+    // 
+    static computePairwiseQubitCorrelations( // TODO this needs more testing
+        n, // number of qubits in the circuit
+        stateVector // a matrix of size (2**n)x1, i.e. a column vector
+    ) {
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "CMatrix.computePairwiseQubitCorrelations(): state vector has invalid size" );
+
+        // compute the probability of each base state
+        let baseStateProbabilities = new CMatrix( stateVector._rows, 1 );
+        for ( let i=0; i < stateVector._rows; ++i ) baseStateProbabilities.set( i, 0, stateVector.get(i,0).mag()**2 );
+
+        let result = new CMatrix(n,n);
+        for ( let i=0; i <= n-2; ++i ) {
+            for ( let j=i+1; j <= n-1; ++j ) {
+
+                // p[bit_i][bit_j] is the probability of measuring (bit_i) at the ith bit and (bit_j) at the jth bit,
+                // where bit_i, bit_j are each either 0 or 1
+                let p = [ [ 0, 0 ], [ 0, 0 ] ];
+
+                for ( let k=0; k < baseStateProbabilities._rows; ++k ) {
+                    let bit_i = (k>>i) & 1;
+                    let bit_j = (k>>j) & 1;
+                    p[ bit_i ][ bit_j ] += baseStateProbabilities.get(k,0)._r;
+                }
+                let correlation = p[0][0]+p[1][1]-p[0][1]-p[1][0];
+                result.set( i, j, correlation );
+                console.log(`${i},${j}: `+StringUtil.numToString(p[0][0])+"+"+StringUtil.numToString(p[0][1])+"+"+StringUtil.numToString(p[1][0])+"+"+StringUtil.numToString(p[1][1])+"="+StringUtil.numToString(p[0][0]+p[0][1]+p[1][0]+p[1][1])+", diff="+StringUtil.numToString(correlation));
+            }
+        }
+        console.log("Pairwise correlations appear in upper triangular half:\n" + result.toString());
+        return result;
+    }
+
     // If the client wants to, they could change the value of usingTextbookConvention
     // and call this again, to initialize things using a different convention.
     static init() {
@@ -776,6 +1049,11 @@ class CMatrix {
         // and the term 'ket', written |*>, denotes a column vector.
         // So an expression written as <a|b> means the dot product of a and b,
         // and the expression |a><b| results in a matrix as tall as a and as wide as b.
+        // More precisely, <psi| is the conjugate transpose of |psi>.
+        // If |psi> is made of complex amplitudes,
+        // <psi|psi> is the sum of associated probabilities,
+        // and the matrix |psi><psi| contains the probabilities along its diagonal.
+
 
         // Here we define the six canonical points on the Bloch sphere.
         //
@@ -787,16 +1065,16 @@ class CMatrix {
         CMatrix.ketOne = CMatrix.createColVector([0,1]);
         // |+>
         CMatrix.ketPlus = CMatrix.createColVector([Math.SQRT1_2,Math.SQRT1_2]);
-        CMatrix.braPlus = CMatrix.ketPlus.transpose();
+        CMatrix.braPlus = CMatrix.ketPlus.conjugateTranspose();
         // |->
         CMatrix.ketMinus = CMatrix.createColVector([Math.SQRT1_2,-Math.SQRT1_2]);
-        CMatrix.braMinus = CMatrix.ketMinus.transpose();
+        CMatrix.braMinus = CMatrix.ketMinus.conjugateTranspose();
         // |+i>
         CMatrix.ketPlusI = CMatrix.createColVector([Math.SQRT1_2,new Complex(0,Math.SQRT1_2)]);
-        CMatrix.braPlusI = CMatrix.ketPlusI.transpose();
+        CMatrix.braPlusI = CMatrix.ketPlusI.conjugateTranspose();
         // |-i>
         CMatrix.ketMinusI = CMatrix.createColVector([Math.SQRT1_2,new Complex(0,-Math.SQRT1_2)]);
-        CMatrix.braMinusI = CMatrix.ketMinusI.transpose();
+        CMatrix.braMinusI = CMatrix.ketMinusI.conjugateTranspose();
 
         // Here we define some commonly used logic gates.
         //
@@ -815,6 +1093,9 @@ class CMatrix {
             CMatrix.create([[new Complex(1,1),new Complex(-1,-1)],[new Complex(1,1),new Complex(1,1)]]),
             0.5
         );
+        CMatrix.gate2x2rootz = CMatrix.create(
+            [[new Complex(1,0),new Complex(0,0)],[new Complex(0,0),new Complex(0,1)]]
+        );
         //let cos_pi_over_8 = Math.cos(Math.PI/8);
         //let sin_pi_over_8 = Math.sin(Math.PI/8);
         let c1 = new Complex( (2+Math.SQRT2)/4 /* cos_pi_over_8*cos_pi_over_8 */, Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */ );
@@ -823,8 +1104,12 @@ class CMatrix {
         c2 = new Complex( - Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */, - (2-Math.SQRT2)/4 /* sin_pi_over_8*sin_pi_over_8 */ );
         let c3 = new Complex( Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */, (2-Math.SQRT2)/4 /* sin_pi_over_8*sin_pi_over_8 */ );
         CMatrix.gate2x2fourthrooty = CMatrix.create([[c1,c2],[c3,c1]]);
+        CMatrix.gate2x2fourthrootz = CMatrix.create(
+            [[new Complex(1,0),new Complex(0,0)],[new Complex(0,0),new Complex(Math.SQRT1_2,Math.SQRT1_2)]]
+        );
 
         CMatrix.gate2x2rx90degrees = CMatrix.create([[new Complex(Math.SQRT1_2,0),new Complex(0,-Math.SQRT1_2)],[new Complex(0,-Math.SQRT1_2),new Complex(Math.SQRT1_2,0)]]);
+        CMatrix.gate2x2ry90degrees = CMatrix.create([[new Complex(Math.SQRT1_2,0),new Complex(-Math.SQRT1_2,0)],[new Complex(Math.SQRT1_2,0),new Complex(Math.SQRT1_2,0)]]);
         CMatrix.gate2x2rz90degrees = CMatrix.create([[new Complex(Math.SQRT1_2,-Math.SQRT1_2),new Complex(0,0)],[new Complex(0,0),new Complex(Math.SQRT1_2,Math.SQRT1_2)]]);
 
         // qubit q0 is the control bit, qubit q1 is the target bit.
@@ -1317,7 +1602,7 @@ function performRegressionTest( verbose=true ) {
     console.log( allSuccessful ? "All regression tests passed." : "At least one regression test failed." );
 }
 
-performRegressionTest(true);
+performRegressionTest(false);
 
 
 
