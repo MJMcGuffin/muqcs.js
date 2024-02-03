@@ -208,45 +208,27 @@ Matrices encoding the effect of a quantum gate:
 
 | Commonly used names | Muqcs code | Number of input qubits | Size of matrix | Notes |
 | --- | --- | --- | --- | --- |
-| zero, 0   | `Sim.ZERO` | 1 | 2x2 | not unitary  |
-| identity, I  | `Sim.I`   | 1 | 2x2 | no-op, hermitian |
-| Hadamard, H  | `Sim.H` | 1 | 2x2 |  |
-| Pauli X, NOT | `Sim.X` | 1 | 2x2 | bit flip |
-| Pauli Y | `Sim.Y` | 1 | 2x2 | |
-| Pauli Z | `Sim.Z` | 1 | 2x2 | phase flip |
+| zero, 0      | `Sim.ZERO` | 1 | 2x2 | not unitary  |
+| identity, I  | `Sim.I`    | 1 | 2x2 | no-op, hermitian |
+| Hadamard, H  | `Sim.H`    | 1 | 2x2 |  |
+| Pauli X, NOT | `Sim.X`    | 1 | 2x2 | bit flip |
+| Pauli Y      | `Sim.Y`    | 1 | 2x2 |  |
+| Pauli Z      | `Sim.Z`    | 1 | 2x2 | phase flip |
 
-**The Cauchy-Schwarz Inequality**
-$$\left( \sum_{k=1}^n a_k b_k \right)^2 \leq \left( \sum_{k=1}^n a_k^2 \right) \left( \sum_{k=1}^n b_k^2 \right)$$
 
-**The Cauchy-Schwarz Inequality**
-
-```math
-\left( \sum_{k=1}^n a_k b_k \right)^2 \leq \left( \sum_{k=1}^n a_k^2 \right) \left( \sum_{k=1}^n b_k^2 \right)
-```
-
-inline matrix here:
- $$\begin{pmatrix}
-  a & b\\ 
-  c & d
-\end{pmatrix}$$,  
-but
 
 Testing a matrix:
+
 $$\begin{bmatrix}
 2 & 3\\
 b & c
 \end{bmatrix}$$
-
-$$a = (\begin{matrix}1 & 1\\ 0 & 1\end{matrix})$$ 
 
 $$\begin{bmatrix}
 1 & 2 & 3\\
 a & b & c
 \end{bmatrix}$$
 
-Testing table formatting ...
+$$a = (\begin{matrix}1 & 1\\ 0 & 1\end{matrix})$$ 
 
-| x | y |
-| --- | --- |
-| `x` | bla |
-| `y` | blah bla **xy** z $\sqrt[4]{X}$ |
+$\sqrt[4]{X}$
