@@ -215,19 +215,28 @@ Matrices encoding the effect of a quantum gate:
 | Pauli Y | `Sim.Y` | 1 | 2x2 | |
 | Pauli Z | `Sim.Z` | 1 | 2x2 | phase flip |
 
+**The Cauchy-Schwarz Inequality**
+$$\left( \sum_{k=1}^n a_k b_k \right)^2 \leq \left( \sum_{k=1}^n a_k^2 \right) \left( \sum_{k=1}^n b_k^2 \right)$$
+
+**The Cauchy-Schwarz Inequality**
+
+```math
+\left( \sum_{k=1}^n a_k b_k \right)^2 \leq \left( \sum_{k=1}^n a_k^2 \right) \left( \sum_{k=1}^n b_k^2 \right)
+```
+
 inline matrix here:
- $\begin{pmatrix}
+ $$\begin{pmatrix}
   a & b\\ 
   c & d
-\end{pmatrix}$,  
+\end{pmatrix}$$,  
 but
 
 Testing a matrix:
 
-$\begin{bmatrix}
+$$\begin{bmatrix}
 1 & 2 & 3\\
 a & b & c
-\end{bmatrix}$
+\end{bmatrix}$$
 
 Testing table formatting ...
 
