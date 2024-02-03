@@ -215,6 +215,13 @@ Matrices encoding the effect of a quantum gate:
 | Pauli Y | `Sim.Y` | 1 | 2x2 | |
 | Pauli Z | `Sim.Z` | 1 | 2x2 | phase flip |
 
+inline matrix here:
+ $\begin{pmatrix}
+  a & b\\ 
+  c & d
+\end{pmatrix}$,  
+but
+
 Testing a matrix:
 
 $\begin{bmatrix}
