@@ -202,3 +202,14 @@ In a circuit with N qubits, the wires are numbered 0 for the top wire to (N-1) f
 
 There is currently no support for controlled swap gates.
 
+**Under Construction**
+
+Testing table formatting ...
+
+| Command | Description |
+| --- | --- |
+| `git status` | List all *new or modified* files |
+| `git diff` | Show file differences that **haven't been** staged |
+
+Testing math formatting: $\sqrt{X}$, $\sqrt[4]{X}$
+
