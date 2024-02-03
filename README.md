@@ -207,7 +207,7 @@ There is currently no support for controlled swap gates.
 Matrices encoding the effect of a quantum gate:
 
 | Commonly used names | Muqcs code | Number of input qubits | Size of matrix | Notes |
-| --- | --- | --- | --- | --- |
+| --- | --- | :---: | :---: | --- |
 | zero, 0      | `Sim.ZERO` | 1 | 2x2 | not unitary  |
 | identity, I  | `Sim.I`    | 1 | 2x2 | no-op, hermitian |
 | Hadamard, H  | `Sim.H`    | 1 | 2x2 |  |
@@ -218,7 +218,6 @@ Matrices encoding the effect of a quantum gate:
 
 
 Testing a matrix:
-
 $$\begin{bmatrix}
 2 & 3\\
 b & c
