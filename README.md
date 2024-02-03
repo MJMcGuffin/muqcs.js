@@ -208,11 +208,7 @@ Matrices encoding the effect of a quantum gate:
 
 | Commonly used names | Muqcs code | Number of input qubits | Size of matrix | Notes |
 | --- | --- | --- | --- | --- |
-| zero, 0   | `Sim.ZERO` | 1 | 2x2 | not unitary 
-$$\begin{bmatrix}
-2 & 3\\
-b & c
-\end{bmatrix}$$ |
+| zero, 0   | `Sim.ZERO` | 1 | 2x2 | not unitary $$\left( \sum_{k=1}^n a_k b_k \right)^2 \leq \left( \sum_{k=1}^n a_k^2 \right) \left( \sum_{k=1}^n b_k^2 \right)$$ |
 | identity, I  | `Sim.I`   | 1 | 2x2 | no-op, hermitian |
 | Hadamard, H  | `Sim.H` | 1 | 2x2 |  |
 | Pauli X, NOT | `Sim.X` | 1 | 2x2 | bit flip |
@@ -236,6 +232,10 @@ inline matrix here:
 but
 
 Testing a matrix:
+$$\begin{bmatrix}
+2 & 3\\
+b & c
+\end{bmatrix}$$
 
 $$\begin{bmatrix}
 1 & 2 & 3\\
