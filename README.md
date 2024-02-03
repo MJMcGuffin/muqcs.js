@@ -204,12 +204,20 @@ There is currently no support for controlled swap gates.
 
 **Under Construction**
 
+Matrices encoding the effect of a quantum gate:
+
+| Commonly used names | Muqcs code | Number of input qubits | Size of matrix | Notes |
+| --- | --- | --- | --- | --- |
+| zero, 0   | `Sim.ZERO` | 1 | 2x2 | not unitary |
+| identity, I  | `Sim.I`   | 1 | 2x2 | no-op, hermitian |
+| Hadamard, H  | `Sim.H` | 1 | 2x2 |  |
+| Pauli X, NOT | `Sim.X` | 1 | 2x2 | bit flip |
+| Pauli Y | `Sim.Y` | 1 | 2x2 | |
+| Pauli Z | `Sim.Z` | 1 | 2x2 | phase flip |
+
 Testing table formatting ...
 
-| Command | Description |
+| x | y |
 | --- | --- |
-| `git status` | List all *new or modified* files |
-| `git diff` | Show file differences that **haven't been** staged $\sqrt[4]{X}$ |
-
-Testing math formatting: $\sqrt{X}$, $\sqrt[4]{X}$
-
+| `x` | bla |
+| `y` | blah bla **xy** z $\sqrt[4]{X}$ |
