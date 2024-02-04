@@ -204,62 +204,62 @@ There is currently no support for controlled swap gates.
 
 **Under Construction**
 
-| Commonly used names | Muqcs code | Size of matrix (rows x columns) |
-| --- | --- | :---: |
-|  test  | `Sim.ketZero` | 2x1 |
+Think of bra ($\langle a |$) as a row vector, and ket ($| a \rangle$) as a column vector equal to the conjugate transpose of the bra.
+Then, multiplying a bra by a ket yields a dot product (i.e., $(\langle a |)(| b \rangle)$, abbreviated to $\langle a | b \rangle$, yields a 1x1 matrix);
+multiplying a bra by its corresponding ket ($\langle a | a \rangle$) yields a dot product equal to the
+sum of the squared magnitudes of the complex numbers in the bra;
+and multiplying a ket by its corresponding bra ($| a \rangle \langle a |$) yields a square matrix called
+the density matrix, whose trace (sum of elements along the diagonal) is equal to $tr(| a \rangle \langle a |) = \langle a | a \rangle$.
 
-test:
-$| 0 \rangle$
+Some predefined basis vectors:
 
-test 2:
-$$| 0 \rangle$$
+| Common names | Muqcs code | Size (rows x columns) | Matrix | Notes |
+| :---: | --- | :---: | --- | --- |
+|  $\langle 0 \|$  | `Sim.braZero` | 1x2 | <pre>[ 1 0 ]</pre> | |
+|  $\| 0 \rangle$  | `Sim.ketZero` | 2x1 | <pre>[ 1 ]<br>[ 0 ]</pre> | |
+|  $\langle 1 \|$  | `Sim.braOne` | 1x2 | <pre>[ 0 1 ]</pre> | |
+|  $\| 1 \rangle$  | `Sim.ketOne` | 2x1 | <pre>[ 0 ]<br>[ 1 ]</pre> | |
+|  $\langle + \|$  | `Sim.braPlus` | 1x2 | <pre>(1/sqrt(2)) [ 1 1 ]</pre> | |
+|  $\| + \rangle$  | `Sim.ketPlus` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ 1 ]</pre> | $\| + \rangle = \frac{1}{\sqrt{2}}(\| 0 \rangle + \| 1 \rangle)$ |
+|  $\langle - \|$  | `Sim.braMinus` | 1x2 | <pre>1/sqrt(2) [ 1 -1 ]</pre> | |
+|  $\| - \rangle$  | `Sim.ketMinus` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -1 ]</pre> | |
+|  $\langle +i \|$  | `Sim.braPlusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 -i ]</pre> |  |
+|  $\|+i\rangle$  | `Sim.ketPlusI` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ i ]</pre> | $\| +i \rangle = \frac{1}{\sqrt{2}}(\| 0 \rangle + i\| 1 \rangle)$ |
+|  $\langle -i \|$  | `Sim.braMinusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 i ]</pre> | |
+|  $\|-i\rangle$  | `Sim.ketMinusI` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -i ]</pre> | |
 
-Unitary matrix:
+A matrix $M$ is *unitary* if its inverse is equal to its conjugate transpose, i.e., $M^{-1} = M^{*}$ or $M^{-1} = M^{\dagger}$
 
-Hermitian matrix: 
+A matrix $M$ is *hermitian* if it is equal to its own conjugate transpose, i.e., $M^{-1} = M^{*}$
 
-Involutory matrix
+A matrix $M$ is *involutory* if it is equal to its own inverse, $M^{-1} = M$
+
+Any two of the above properties implies the third.  All valid quantum gates are described by matrices that are unitary.
+Some of them (like I, X, Y, Z, H, CX, SWAP) are described by matrices that are additionally hermitian and involutory.
 
 Matrices encoding the effect of a quantum gate:
 
-| Commonly used names | Muqcs code | Number of input qubits | Size of matrix | Notes |
+| Common names | Muqcs code | Qubits | Size | Notes |
 | --- | --- | :---: | :---: | --- |
-| zero, 0       | `Sim.ZERO` | 1 | 2x2 | not unitary  |
-| identity, I   | `Sim.I`    | 1 | 2x2 | no-op, hermitian |
-| Hadamard, H   | `Sim.H`    | 1 | 2x2 |  |
-| Pauli X, NOT  | `Sim.X`    | 1 | 2x2 | bit flip |
-| Pauli Y       | `Sim.Y`    | 1 | 2x2 |  |
-| Pauli Z, Phase($\pi$)       | `Sim.Z` or `Phase(180)`    | 1 | 2x2 | phase flip |
-| $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX`   | 1 | 2x2 |  |
-| $\sqrt{Y}$, SY | `Sim.SY`   | 1 | 2x2 |  |
-| $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ` or `Phase(90)`   | 1 | 2x2 |  |
-| $\sqrt[4]{X}$,  | `Sim.SSX`   | 1 | 2x2 |  |
-| $\sqrt[4]{Y}$,  | `Sim.SSY`   | 1 | 2x2 |  |
-| $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ` or `Phase(45)`  | 1 | 2x2 |  |
-| global phase shift    | `Sim.GlobalPhsae(angleInDegrees)` |  1 | 2x2 | can be placed on any qubit, causes a phase shift in all qubits |
-| phase shift | `Sim.Phase(angleInDegrees)` | 1 | 2x2 |  |
-| $R_x$       | `Sim.RX(angleInDegrees)` | 1 | 2x2 |  |
-| $R_y$       | `Sim.RY(angleInDegrees)` | 1 | 2x2 |  |
-| $R_z$       | `Sim.RZ(angleInDegrees)` | 1 | 2x2 |  |
-|             | `Sim.RotFreeAxis( ax, ay, az )` | 1 | 2x2 |  |
-|             | `Sim.RotFreeAxisAngle( ax, ay, az, angleInDegrees )` | 1 | 2x2 |  |
-|             | `Sim.SWAP_2`      | 2 | 4x4         |  |
-|             | `Sim.SWAP(i,j,n)` | 2 | (2^n)x(2^n) |  |
-| CNOT, CX, XOR | `Sim.CX`     | 2 | 4x4 |   |
-
-
-Testing a matrix:
-
-$$\begin{bmatrix}
-2 & 3\\
-b & c
-\end{bmatrix}$$
-
-$$\begin{bmatrix}
-1 & 2 & 3\\
-a & b & c
-\end{bmatrix}$$
-
-$$a = (\begin{matrix}1 & 1\\ 0 & 1\end{matrix})$$ 
-
-$\sqrt[4]{X}$
+| zero, 0        | `Sim.ZERO` | 1 | 2x2 | not unitary  |
+| identity, I    | `Sim.I`    | 1 | 2x2 | no-op |
+| Hadamard, H    | `Sim.H`    | 1 | 2x2 |  |
+| Pauli X, NOT   | `Sim.X`    | 1 | 2x2 | bit flip |
+| Pauli Y        | `Sim.Y`    | 1 | 2x2 |  |
+| Pauli Z, Phase($\pi$) | `Sim.Z` or `Phase(180)` | 1 | 2x2 | phase flip |
+| $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX` | 1 | 2x2 |  |
+| $\sqrt{Y}$, SY        | `Sim.SY` | 1 | 2x2 |  |
+| $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ` or `Phase(90)` | 1 | 2x2 |  |
+| $\sqrt[4]{X}$         | `Sim.SSX` | 1 | 2x2 |  |
+| $\sqrt[4]{Y}$         | `Sim.SSY` | 1 | 2x2 |  |
+| $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ` or `Phase(45)` | 1 | 2x2 |  |
+| global phase shift    | `Sim.GlobalPhase (angleInDegrees)` |  1 | 2x2 | can be placed on any qubit, causes an equal phase shift in all qubits |
+| phase shift    | `Sim.Phase (angleInDegrees)` | 1 | 2x2 |  |
+| $R_x$          | `Sim.RX (angleInDegrees)`    | 1 | 2x2 |  |
+| $R_y$          | `Sim.RY (angleInDegrees)`    | 1 | 2x2 |  |
+| $R_z$          | `Sim.RZ (angleInDegrees)`    | 1 | 2x2 |  |
+|                | `Sim.RotFreeAxis (ax,ay,az)` | 1 | 2x2 |  |
+|                | `Sim.RotFreeAxisAngle (ax,ay,az, angleInDegrees)` | 1 | 2x2 |  |
+|                | `Sim.SWAP_2`      | 2 | 4x4              |  |
+|                | `Sim.SWAP(i,j,n)` | 2 | $2^n \times 2^n$ |  |
+| CNOT, CX, XOR  | `Sim.CX`          | 2 | 4x4              |  |
