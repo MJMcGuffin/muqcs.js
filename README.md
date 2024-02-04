@@ -230,9 +230,9 @@ Some predefined basis vectors:
 
 A matrix $M$ is *unitary* if its inverse is equal to its conjugate transpose, i.e., $M^{-1} = M^{*}$ or $M^{-1} = M^{\dagger}$
 
-A matrix $M$ is *hermitian* if it is equal to its own conjugate transpose, i.e., $M^{-1} = M^{*}$
+A matrix $M$ is *hermitian* if it is equal to its own conjugate transpose, i.e., $M = M^{*}$
 
-A matrix $M$ is *involutory* if it is equal to its own inverse, $M^{-1} = M$
+A matrix $M$ is *involutory* if it is equal to its own inverse, $M = M^{-1}$
 
 Any two of the above properties implies the third.  All valid quantum gates are described by matrices that are unitary.
 Some of them (like I, X, Y, Z, H, CX, SWAP) are described by matrices that are additionally hermitian and involutory.
@@ -241,24 +241,24 @@ Matrices encoding the effect of a quantum gate:
 
 | Common names | Muqcs code | Qubits | Size | Notes |
 | --- | --- | :---: | :---: | --- |
-| zero, 0        | `Sim.ZERO` | 1 | 2x2 | not unitary  |
+| zero, 0        | `Sim.ZERO` | 1 | 2x2 | not unitary |
 | identity, I    | `Sim.I`    | 1 | 2x2 | no-op |
 | Hadamard, H    | `Sim.H`    | 1 | 2x2 |  |
-| Pauli X, NOT   | `Sim.X`    | 1 | 2x2 | bit flip |
-| Pauli Y        | `Sim.Y`    | 1 | 2x2 |  |
-| Pauli Z, Phase($\pi$) | `Sim.Z` or `Phase(180)` | 1 | 2x2 | phase flip |
+| Pauli X, NOT   | `Sim.X`    | 1 | 2x2 | bit flip <br> X = -iYZ = iZY |
+| Pauli Y        | `Sim.Y`    | 1 | 2x2 | Y = iXZ = -iZX |
+| Pauli Z, Phase($\pi$) | `Sim.Z` or `Phase(180)` | 1 | 2x2 | phase flip <br> Z = -iXY = iYX <br> Z = Phase(180) |
 | $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX` | 1 | 2x2 |  |
 | $\sqrt{Y}$, SY        | `Sim.SY` | 1 | 2x2 |  |
 | $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ` or `Phase(90)` | 1 | 2x2 |  |
 | $\sqrt[4]{X}$         | `Sim.SSX` | 1 | 2x2 |  |
 | $\sqrt[4]{Y}$         | `Sim.SSY` | 1 | 2x2 |  |
 | $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ` or `Phase(45)` | 1 | 2x2 |  |
-| global phase shift    | `Sim.GlobalPhase (angleInDegrees)` |  1 | 2x2 | can be placed on any qubit, causes an equal phase shift in all qubits |
-| phase shift    | `Sim.Phase (angleInDegrees)` | 1 | 2x2 |  |
+| global phase shift    | `Sim.GlobalPhase (angleInDegrees)` |  1 | 2x2 | can be placed on any qubit, causes an equal phase shift in all amplitudes |
+| phase shift    | `Sim.Phase (angleInDegrees)` | 1 | 2x2 | Z = Phase(180) |
 | $R_x$          | `Sim.RX (angleInDegrees)`    | 1 | 2x2 |  |
 | $R_y$          | `Sim.RY (angleInDegrees)`    | 1 | 2x2 |  |
-| $R_z$          | `Sim.RZ (angleInDegrees)`    | 1 | 2x2 |  |
-|                | `Sim.RotFreeAxis (ax,ay,az)` | 1 | 2x2 |  |
+| $R_z$          | `Sim.RZ (angleInDegrees)`    | 1 | 2x2 | Phase(angle) * GlobalPhase( -angle/2 ) = RZ( angle ) <br> Phase(angle) = RZ( angle ) * GlobalPhase( angle/2 ) <br> Z = Phase(180) = RZ(180) * GlobalPhase(90) |
+|                | `Sim.RotFreeAxis (ax,ay,az)` | 1 | 2x2 | The angle, in radians, is encoded in the length of the given vector |
 |                | `Sim.RotFreeAxisAngle (ax,ay,az, angleInDegrees)` | 1 | 2x2 |  |
 |                | `Sim.SWAP_2`      | 2 | 4x4              |  |
 |                | `Sim.SWAP(i,j,n)` | 2 | $2^n \times 2^n$ |  |
