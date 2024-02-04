@@ -204,6 +204,17 @@ There is currently no support for controlled swap gates.
 
 **Under Construction**
 
+| Commonly used names | Muqcs code | Size of matrix (rows x columns) |
+| --- | --- | :---: |
+| $| 0 \rangle$   | `Sim.ketZero` | 2x1 |
+
+
+Unitary matrix:
+
+Hermitian matrix: 
+
+Involutory matrix
+
 Matrices encoding the effect of a quantum gate:
 
 | Commonly used names | Muqcs code | Number of input qubits | Size of matrix | Notes |
@@ -213,13 +224,13 @@ Matrices encoding the effect of a quantum gate:
 | Hadamard, H   | `Sim.H`    | 1 | 2x2 |  |
 | Pauli X, NOT  | `Sim.X`    | 1 | 2x2 | bit flip |
 | Pauli Y       | `Sim.Y`    | 1 | 2x2 |  |
-| Pauli Z, Phase($\pi$)       | `Sim.Z`, `Phase(180)`    | 1 | 2x2 | phase flip |
+| Pauli Z, Phase($\pi$)       | `Sim.Z` or `Phase(180)`    | 1 | 2x2 | phase flip |
 | $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX`   | 1 | 2x2 |  |
 | $\sqrt{Y}$, SY | `Sim.SY`   | 1 | 2x2 |  |
-| $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ`, `Phase(90)`   | 1 | 2x2 |  |
+| $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ` or `Phase(90)`   | 1 | 2x2 |  |
 | $\sqrt[4]{X}$,  | `Sim.SSX`   | 1 | 2x2 |  |
 | $\sqrt[4]{Y}$,  | `Sim.SSY`   | 1 | 2x2 |  |
-| $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ`, `Phase(45)`  | 1 | 2x2 |  |
+| $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ` or `Phase(45)`  | 1 | 2x2 |  |
 | global phase shift    | `Sim.GlobalPhsae(angleInDegrees)` |  1 | 2x2 | can be placed on any qubit, causes a phase shift in all qubits |
 | phase shift | `Sim.Phase(angleInDegrees)` | 1 | 2x2 |  |
 | $R_x$       | `Sim.RX(angleInDegrees)` | 1 | 2x2 |  |
@@ -229,7 +240,7 @@ Matrices encoding the effect of a quantum gate:
 |             | `Sim.RotFreeAxisAngle( ax, ay, az, angleInDegrees )` | 1 | 2x2 |  |
 |             | `Sim.SWAP_2`      | 2 | 4x4         |  |
 |             | `Sim.SWAP(i,j,n)` | 2 | (2^n)x(2^n) |  |
-| CX, CNOT, XOR | `Sim.CX`     | 2 | 4x4 |   |
+| CNOT, CX, XOR | `Sim.CX`     | 2 | 4x4 |   |
 
 
 Testing a matrix:
