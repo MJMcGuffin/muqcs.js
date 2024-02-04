@@ -206,8 +206,13 @@ There is currently no support for controlled swap gates.
 
 | Commonly used names | Muqcs code | Size of matrix (rows x columns) |
 | --- | --- | :---: |
-| $| 0 \rangle$   | `Sim.ketZero` | 2x1 |
+|  test  | `Sim.ketZero` | 2x1 |
 
+test:
+$| 0 \rangle$
+
+test 2:
+$$| 0 \rangle$$
 
 Unitary matrix:
 
