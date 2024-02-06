@@ -237,12 +237,14 @@ A matrix $M$ is *involutory* if it is equal to its own inverse, $M = M^{-1}$
 Any two of the above properties implies the third.  All valid quantum gates are described by matrices that are unitary.
 Some of them (like I, X, Y, Z, H, CX, SWAP) are described by matrices that are additionally hermitian and involutory.
 
+Circuits consisting only of Clifford gates (which includes I, H, X, Y, Z, SX, SY, SZ, CX, SWAP) can be simulated in polynomial time on a classical computer, by the Gottesman-Knill theorem.  Thus, mere superposition (which can be created with H gates) and entanglement (CX gates) are not sufficient to explain the speedup offered by quantum computers.
+
 Matrices encoding the effect of a quantum gate:
 
 | Common names | Muqcs code | Qubits | Size | Notes |
 | --- | --- | :---: | :---: | --- |
 | zero, 0        | `Sim.ZERO` | 1 | 2x2 | not unitary |
-| identity, I    | `Sim.I`    | 1 | 2x2 | no-op |
+| identity, I    | `Sim.I`    | 1 | 2x2 | no-op <br> I = Phase(0) |
 | Hadamard, H    | `Sim.H`    | 1 | 2x2 |  |
 | Pauli X, NOT   | `Sim.X`    | 1 | 2x2 | bit flip <br> X = -iYZ = iZY |
 | Pauli Y        | `Sim.Y`    | 1 | 2x2 | Y = iXZ = -iZX |
