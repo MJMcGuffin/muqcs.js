@@ -249,10 +249,10 @@ Matrices encoding the effect of a quantum gate:
 | Pauli X, NOT   | `Sim.X`    | 1 | 2x2 | bit flip <br> X = -iYZ = iZY |
 | Pauli Y        | `Sim.Y`    | 1 | 2x2 | Y = iXZ = -iZX |
 | Pauli Z, Phase($\pi$) | `Sim.Z` or `Phase(180)` | 1 | 2x2 | phase flip <br> Z = -iXY = iYX <br> Z = Phase(180) |
-| $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX` | 1 | 2x2 |  |
+| $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX` | 1 | 2x2 | The name SX means 'Square root of X' |
 | $\sqrt{Y}$, SY        | `Sim.SY` | 1 | 2x2 |  |
 | $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ` or `Phase(90)` | 1 | 2x2 | SZ = Phase(90) |
-| $\sqrt[4]{X}$         | `Sim.SSX` | 1 | 2x2 |  |
+| $\sqrt[4]{X}$         | `Sim.SSX` | 1 | 2x2 | The name SSX means 'Square root of Square root of X' |
 | $\sqrt[4]{Y}$         | `Sim.SSY` | 1 | 2x2 |  |
 | $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ` or `Phase(45)` | 1 | 2x2 | SSZ = Phase(45) |
 | global phase shift    | `Sim.GlobalPhase (angleInDegrees)` |  1 | 2x2 | can be placed on any qubit, causes an equal phase shift in all amplitudes |
