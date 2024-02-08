@@ -42,7 +42,7 @@ which produces this output:
     [30,40]   [5+7i,-1-3i]   [35+7i,39-3i]
 
 Similarly, there are static methods in the CMatrix class for subtracting matrices (diff(m1,m2)), multiplying matrices (mult(m1,m2) and naryMult([m1,m2,...])), and for computing their tensor product (tensor(m1,m2) and naryTensor([m1,m2,...])).
-The CMatrix class also has some predefined vectors and matrices.  For example,
+There are also some predefined vectors and matrices.  For example,
 
     console.log(Sim.ketOne.toString());
 
@@ -55,7 +55,7 @@ and
 
     console.log(Sim.CX.toString());
 
-prints the 4x4 matrix for the CNOT gate:
+prints the 4x4 matrix for the CNOT (also called CX) gate:
 
     [1,_,_,_]
     [_,_,_,1]
@@ -149,8 +149,8 @@ Here is an example computing these statistics with muqcs:
     let N = 4; // total qubits
     input = CMatrix.naryTensor( [ Sim.ketZero /*q3*/, Sim.ketZero /*q2*/,
                                   Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
-    step1 = CMatrix.naryTensor( [ Sim.RY(45) /*q3*/, Sim.RX90degrees /*q2*/,
-                                  Sim.RX90degrees /*q1*/, Sim.RX(45) /*q0*/ ] );
+    step1 = CMatrix.naryTensor( [ Sim.RY(45) /*q3*/, Sim.RX_90deg /*q2*/,
+                                  Sim.RX_90deg /*q1*/, Sim.RX(45) /*q0*/ ] );
     step2 = CMatrix.naryTensor( [ Sim.RX(45) /*q3*/, Sim.RZ(120) /*q2*/,
                                   Sim.RZ(100) /*q1*/, Sim.I /*q0*/ ] );
     output = CMatrix.naryMult([ step2, step1, input ]);
