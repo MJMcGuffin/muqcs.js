@@ -148,7 +148,7 @@ class StringUtil {
     //   +"                [0]\n"
     //   +"                [1]"
     //
-    static concatenateMultilineStrings(...args) {
+    static concatMultiline(...args) {
         let w = []; // widths of given strings
         let h = []; // heights of given strings
         let max_height = 0;
@@ -231,11 +231,22 @@ class Complex {
     static diff(c1,c2) {
         return new Complex( c1._r-c2._r, c1._i-c2._i );
     }
-    // Returns the product of the two given complex numbers.
+    // Returns the product of the two given numbers.
     static mult(c1,c2) {
-        return new Complex( c1._r*c2._r - c1._i*c2._i, c1._r*c2._i + c1._i*c2._r );
+        if ( c1 instanceof Complex ) {
+            if ( c2 instanceof Complex ) {
+                return new Complex( c1._r*c2._r - c1._i*c2._i, c1._r*c2._i + c1._i*c2._r );
+            }
+            return new Complex( c1._r * c2, c1._i * c2 );
+        }
+        else if ( c2 instanceof Complex ) {
+            return new Complex( c1 * c2._r, c1 * c2._i );
+        }
+        return c1 * c2;
     }
 }
+Complex.i = new Complex(0,1);
+
 
 // This is a complex matrix, i.e., a matrix containing complex numbers.
 // To save on overhead, the complex numbers are stored as consecutive pairs of numbers in a floating point number array.
@@ -409,13 +420,30 @@ class CMatrix {
     }
     // Returns the product of the two given matrices,
     // or of a matrix with a scalar.
-    static mult( a/*matrix*/, b/*matrix or scalar*/ ) {
-        Util.assert(a instanceof CMatrix,"CMatrix.mult(): wrong type");
+    static mult( a, b ) {
+        Util.assert(a instanceof CMatrix || b instanceof CMatrix,"CMatrix.mult(): wrong type");
+
+        if ( !( a instanceof CMatrix ) ) {
+            // swap a and b, so that a will be the matrix and b the scalar
+            let tmp = b;
+            b = a;
+            a = tmp;
+        }
 
         if ( typeof(b)==='number' ) {
             let M = a.copy();
             for ( let j = M._m.length-1; j >= 0; j-- )
                 M._m[j] *= b;
+            return M;
+        }
+        else if ( b instanceof Complex ) {
+            let M = new CMatrix(a._rows,a._cols);
+            for ( let r = 0; r < M._rows; r++ ) {
+                for ( let c = 0; c < M._cols; c++ ) {
+                    let product = Complex.mult(a.get(r,c),b);
+                    M.set(r,c,product);
+                }
+            }
             return M;
         }
         else if ( b instanceof CMatrix ) {
@@ -433,9 +461,6 @@ class CMatrix {
                 }
             }
             return M;
-        }
-        else if ( b instanceof Complex ) {
-            Util.assert(false,"CMatrix.mult() with complex number not yet implemented");
         }
         else Util.assert(false,"CMatrix.mult(): unknown type");
     }
@@ -578,19 +603,31 @@ class CMatrix {
             M.set(k,k,1);
         return M;
     }
-    static gate2x2globalPhaseChange( angleInDegrees ) {
+}
+
+class Sim { // Simulator
+
+    static GlobalPhase( angleInDegrees ) {
         let angleInRadians = angleInDegrees / 180.0 * Math.PI;
         let globalPhaseChange = new Complex( Math.cos(angleInRadians), Math.sin(angleInRadians) );
         return CMatrix.create([[globalPhaseChange,0],[0,globalPhaseChange]]);
+    }
+    // Note that
+    //     Phase(angle) * GlobalPhase( -angle/2 ) = RZ( angle )
+    //     Phase(angle) = RZ( angle ) * GlobalPhase( angle/2 )
+    static Phase( angleInDegrees ) {
+        let angleInRadians = angleInDegrees / 180.0 * Math.PI;
+        let phaseChange = new Complex( Math.cos(angleInRadians), Math.sin(angleInRadians) );
+        return CMatrix.create([[1,0],[0,phaseChange]]);
     }
     // Returns a 2x2 matrix that rotates around an axis of the Bloch sphere.
     // With a 180 degree angle, this is equivalent to a Pauli X gate (also called NOT gate)
     // but differs by a global phase.
     // More particularly, the following print statements should output the same thing:
-    //   console.log(CMatrix.mult(CMatrix.gate2x2rx(180),CMatrix.gate2x2globalPhaseChange(90)).toString());
-    //   console.log(CMatrix.gate2x2not.toString());
+    //   console.log(CMatrix.mult(Sim.RX(180),Sim.GlobalPhase(90)).toString());
+    //   console.log(Sim.X.toString());
     //
-    static gate2x2rx( angleInDegrees ) {
+    static RX( angleInDegrees ) {
         let angleInRadians = angleInDegrees / 180.0 * Math.PI;
         let halfAngle = angleInRadians / 2;
         let sine = Math.sin( halfAngle );
@@ -604,10 +641,10 @@ class CMatrix {
     // With a 180 degree angle, this is equivalent to a Pauli Y gate
     // but differs by a global phase.
     // More particularly, the following print statements should output the same thing:
-    //   console.log(CMatrix.mult(CMatrix.gate2x2ry(180),CMatrix.gate2x2globalPhaseChange(90)).toString());
-    //   console.log(CMatrix.gate2x2y.toString());
+    //   console.log(CMatrix.mult(Sim.RY(180),Sim.GlobalPhase(90)).toString());
+    //   console.log(Sim.Y.toString());
     //
-    static gate2x2ry( angleInDegrees ) {
+    static RY( angleInDegrees ) {
         let angleInRadians = angleInDegrees / 180.0 * Math.PI;
         let halfAngle = angleInRadians / 2;
         let sine = Math.sin( halfAngle );
@@ -621,10 +658,10 @@ class CMatrix {
     // With a 180 degree angle, this is equivalent to a Pauli Z gate
     // but differs by a global phase.
     // More particularly, the following print statements should output the same thing:
-    //   console.log(CMatrix.mult(CMatrix.gate2x2rz(180),CMatrix.gate2x2globalPhaseChange(90)).toString());
-    //   console.log(CMatrix.gate2x2z.toString());
+    //   console.log(CMatrix.mult(Sim.RZ(180),Sim.GlobalPhase(90)).toString());
+    //   console.log(Sim.Z.toString());
     //
-    static gate2x2rz( angleInDegrees ) {
+    static RZ( angleInDegrees ) {
         let angleInRadians = angleInDegrees / 180.0 * Math.PI;
         let halfAngle = angleInRadians / 2;
         let sine = Math.sin( halfAngle );
@@ -634,12 +671,61 @@ class CMatrix {
             [ new Complex(0,0),  new Complex(cosine,sine) ],
         ] );
     }
+    // This rotates around the given vector by an angle in radians equal to the magnitude of the given vector.
+    // This way of encoding the angle in the vector of the axis of rotation might seem strange,
+    // but it means that the output is continuous in all 3 input variables and therefore easier to optimize,
+    // which would not be the case with a parametrization where the angle is separate from the vector components of the axis.
+    // (To see why, consider the latter parametrization, and imagine what would happen as the input shifts
+    // from (ax,ay-epsilon,az,angle) to (ax,ay+epsilon,az,angle).
+    // This would result in a 180 degree change of axis direction and a discontinuous change in output.
+    // The same kind of change of axis direction in the first parametrization would require the angle to pass through zero,
+    // avoiding a discontinuity in the output.)
+    //
+    // For the definition of the matrix, see
+    //     https://arxiv.org/abs/2104.14875
+    //     Hiroshi C. Watanabe, Rudy Raymond, Yu-ya Ohnishi, Eriko Kaminishi, Michihiko Sugawara
+    //     Optimizing Parameterized Quantum Circuits with Free-Axis Selection
+    // in particular equation (1) on page 4.
+    // See also the documentation for the RVGate in Qiskit
+    //     https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.RVGate
+    // although, at the time of writing, that documentation contains typos.
+    // See also the source code for the RVGate in Qiskit
+    //     https://github.com/Qiskit/qiskit/blob/stable/0.46/qiskit/circuit/library/generalized_gates/rv.py
+    //
+    // If (ax,ay,az) is proportional to (1,0,0), or to (0,1,0), or to (0,0,1),
+    // the result is equivalent to RX, RY, or RZ, respectively.
+    static RotFreeAxis( ax, ay, az ) {
+        let magSquared = ax*ax + ay*ay + az*az;
+        if ( magSquared === 0 ) {
+            return Sim.I;
+        }
+        let angleInRadians = Math.sqrt( magSquared );
+        ax /= angleInRadians;
+        ay /= angleInRadians;
+        az /= angleInRadians;
+        let halfAngle = angleInRadians / 2;
+        let sine = Math.sin( halfAngle );
+        let cosine = Math.cos( halfAngle );
+        return CMatrix.create( [
+            [ new Complex(cosine,-az*sine), new Complex(-ay*sine,-ax*sine) ],
+            [ new Complex(ay*sine,-ax*sine),  new Complex(cosine,az*sine) ],
+        ] );
+    }
+    static RotFreeAxisAngle( ax, ay, az, angleInDegrees ) { // rotates around the given axis by the given angle
+        let angleInRadians = angleInDegrees / 180.0 * Math.PI;
+        let magSquared = ax*ax + ay*ay + az*az;
+        if ( magSquared === 0 || angleInDegrees === 0 ) {
+            return Sim.I;
+        }
+        let k = angleInRadians / Math.sqrt( magSquared );
+        return Sim.RotFreeAxis( ax * k, ay * k, az * k );
+    }
     // Returns a matrix for swapping wires i and j in a quantum circuit with n wires.
     // i and j are zero-based, i.e., they are between 0 and (n-1).
     // The matrix that is returned has size (2**n)x(2**n)
-    static wireSwap(i,j,n) {
-        Util.assert( 0<=i && i<n && 0<=j && j<n, "CMatrix.wireSwap(): invalid indices" );
-        Util.assert( i!=j, "CMatrix.wireSwap(): indices are unexpectedly equal" );
+    static SWAP(i,j,n) {
+        Util.assert( 0<=i && i<n && 0<=j && j<n, "Sim.SWAP(): invalid indices" );
+        Util.assert( i!=j, "Sim.SWAP(): indices are unexpectedly equal" );
         let matrixSize = 2 ** n;
         if ( i === j ) {
             return CMatrix.identity( matrixSize );
@@ -679,8 +765,8 @@ class CMatrix {
     // For example, passing in arguments (m,1,0,2)
     // returns an 'upside-down' version of the original matrix.
     static expand4x4ForNWires(m/*a 4x4 matrix*/,i,j,n/*number of qubits in the circuit*/) {
-        Util.assert( 0<=i && i<n && 0<=j && j<n && i!=j, "CMatrix.expand4x4ForNWires(): invalid indices" );
-        Util.assert( m._rows===m._cols && m._rows===4, "CMatrix.expand4x4ForNWires(): invalid size" );
+        Util.assert( 0<=i && i<n && 0<=j && j<n && i!=j, "Sim.expand4x4ForNWires(): invalid indices" );
+        Util.assert( m._rows===m._cols && m._rows===4, "Sim.expand4x4ForNWires(): invalid size" );
 
         // Step 1: turn the matrix upside down, if necessary
         let m1 = null;
@@ -698,11 +784,11 @@ class CMatrix {
             // q_j' = q_i --|    |--     q_i --X--|   |--X--
             //              +----+                +---+
             //
-            m1 = CMatrix.naryMult([ CMatrix.gate4x4swap, m, CMatrix.gate4x4swap ]);
+            m1 = CMatrix.naryMult([ Sim.SWAP_2, m, Sim.SWAP_2 ]);
             let tmp = i;
             i = j;
             j = tmp;
-            Util.assert(i<j,"CMatrix.expand4x4ForNWires(): unexpected condition");
+            Util.assert(i<j,"Sim.expand4x4ForNWires(): unexpected condition");
         }
         else {
             m1 = m.copy();
@@ -725,7 +811,7 @@ class CMatrix {
             //             |    |                   |          |
             //   q_{j-i} --+----+--       q_{j-i} --X----------X--
             //
-            let swapStep = CMatrix.tensor( CMatrix.wireSwap(0,numInnerWires,numInnerWires+1), CMatrix.gate2x2identity, usingTextbookConvention );
+            let swapStep = CMatrix.tensor( Sim.SWAP(0,numInnerWires,numInnerWires+1), Sim.I, usingTextbookConvention );
             m2 = CMatrix.naryMult( [
                 swapStep,
                 CMatrix.tensor( CMatrix.identity(2**numInnerWires), m1, usingTextbookConvention ),
@@ -769,9 +855,9 @@ class CMatrix {
         stateVector, // a matrix of size (2**n)x1, i.e. a column vector
         listOfControlBits = [] // a list of pairs of the form [wire_index, flag] where 0<=wire_index<n and flag is true for a control bit and false for an anti-control bit
     ) {
-        Util.assert( 0<=i && i<n, "CMatrix.transformStateVectorWith2x2(): invalid index" );
-        Util.assert( m._rows===m._cols && m._rows===2, "CMatrix.transformStateVectorWith2x2(): invalid size" );
-        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "CMatrix.transformStateVectorWith2x2(): state vector has invalid size" );
+        Util.assert( 0<=i && i<n, "Sim.transformStateVectorWith2x2(): invalid index" );
+        Util.assert( m._rows===m._cols && m._rows===2, "Sim.transformStateVectorWith2x2(): invalid size" );
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.transformStateVectorWith2x2(): state vector has invalid size" );
 
         let inclusionMask = 0;
         let desiredValueMask = 0;
@@ -826,9 +912,9 @@ class CMatrix {
         n, // number of qubits in the circuit
         stateVector // a matrix of size (2**n)x1, i.e. a column vector
     ) {
-        Util.assert( 0<=i && i<n && 0<=j && j<n, "CMatrix.transformStateVectorWithSwap(): invalid indices" );
-        Util.assert( i!=j, "CMatrix.transformStateVectorWithSwap(): indices are unexpectedly equal" );
-        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "CMatrix.transformStateVectorWithSwap(): state vector has invalid size" );
+        Util.assert( 0<=i && i<n && 0<=j && j<n, "Sim.transformStateVectorWithSwap(): invalid indices" );
+        Util.assert( i!=j, "Sim.transformStateVectorWithSwap(): indices are unexpectedly equal" );
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.transformStateVectorWithSwap(): state vector has invalid size" );
 
         let result = stateVector.copy();
         if ( i === j ) {
@@ -875,7 +961,7 @@ class CMatrix {
         n, // number of qubits in the circuit
         stateVector // a matrix of size (2**n)x1, i.e. a column vector
     ) {
-        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "CMatrix.computeDensityMatrix(): state vector has invalid size" );
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.computeDensityMatrix(): state vector has invalid size" );
         return CMatrix.mult( stateVector, stateVector.conjugateTranspose() );
     }
     // Returns a 2x2 matrix
@@ -885,16 +971,48 @@ class CMatrix {
         densityMatrix // a matrix of size (2**n)x(2**n)
     ) {
         let twoN = 2**n;
-        Util.assert( 0<=i && i<n, "CMatrix.computeReducedDensityMatrixForOneQubit(): invalid index" );
-        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "CMatrix.computeReducedDensityMatrixForOneQubit(): density matrix has invalid size" );
-        let rdm = new CMatrix(2,2); // reduced density matrix
+        Util.assert( 0<=i && i<n, "Sim.computeReducedDensityMatrixForOneQubit(): invalid index" );
+        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computeReducedDensityMatrixForOneQubit(): density matrix has invalid size" );
+        let rdm = new CMatrix(2,2); // reduced density matrix; a 2x2 matrix
         let mask = ~(1 << i);
         for ( let row = 0; row < twoN; ++row ) {
             let row_bit = ( row >> i ) & 1; // ith bit in row
             for ( let col = 0; col < twoN; ++col ) {
                 if ( (row & mask) === (col & mask) ) {
                     let col_bit = ( col >> i ) & 1; // ith bit in col
+                    // The next line, in pseudocode, could be written more simply as
+                    //    rdm[row_bit,col_bit] += densityMatrix[row,col]
                     rdm.set( row_bit, col_bit, Complex.sum( rdm.get(row_bit,col_bit), densityMatrix.get(row,col) ));
+                }
+            }
+        }
+        return rdm;
+    }
+    // Returns a 4x4 matrix
+    static computeReducedDensityMatrixForTwoQubits(
+        i,j, // the two qubits of interest; we trace out the other qubits
+        n, // number of qubits in the circuit
+        densityMatrix // a matrix of size (2**n)x(2**n)
+    ) {
+        if ( i > j ) {
+            // swap
+            let tmp = i;
+            i = j;
+            j = tmp;
+        }
+        let twoN = 2**n;
+        Util.assert( 0<=i && i<j && j<n, "Sim.computeReducedDensityMatrixForTwoQubits(): invalid indices" );
+        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computeReducedDensityMatrixForTwoQubits(): density matrix has invalid size" );
+        let rdm = new CMatrix(4,4); // reduced density matrix; a 4x4 matrix
+        let mask = ~((1 << j) | (1 << i));
+        for ( let row = 0; row < twoN; ++row ) {
+            let row_bits = (( row >> (j-1) ) & 2) | (( row >> i ) & 1); // (jth,ith) bits in row
+            for ( let col = 0; col < twoN; ++col ) {
+                if ( (row & mask) === (col & mask) ) {
+                    let col_bits = (( col >> (j-1) ) & 2) | (( col >> i ) & 1); // (jth,ith) bits in col
+                    // The next line, in pseudocode, could be written more simply as
+                    //    rdm[row_bits,col_bits] += densityMatrix[row,col]
+                    rdm.set( row_bits, col_bits, Complex.sum( rdm.get(row_bits,col_bits), densityMatrix.get(row,col) ));
                 }
             }
         }
@@ -904,7 +1022,7 @@ class CMatrix {
     static computeStatsFor2x2DensityMatrix(
         dm // a 2x2 density matrix for a single qubit
     ) {
-        Util.assert( dm._rows===2 && dm._cols===2, "CMatrix.computeStatsFor2x2DensityMatrix(): matrix is not 2x2");
+        Util.assert( dm._rows===2 && dm._cols===2, "Sim.computeStatsFor2x2DensityMatrix(): matrix is not 2x2");
         /*
         Assume the local state of the qubit can be expressed as
            |psi> = alpha |0> + e^(i phase) (1-alpha^2)^0.5 |1>
@@ -962,12 +1080,12 @@ class CMatrix {
         densityMatrix // a matrix of size (2**n)x(2**n)
     ) {
         let twoN = 2**n;
-        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "CMatrix.analyzeEachQubit(): density matrix has invalid size" );
+        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.analyzeEachQubit(): density matrix has invalid size" );
 
         let results = [];
         for ( let i = 0; i < n; ++i ) {
-            let RDM = CMatrix.computeReducedDensityMatrixForOneQubit(i,n,densityMatrix);
-            let S = CMatrix.computeStatsFor2x2DensityMatrix( RDM );
+            let RDM = Sim.computeReducedDensityMatrixForOneQubit(i,n,densityMatrix);
+            let S = Sim.computeStatsFor2x2DensityMatrix( RDM );
             S.reducedDensityMatrix = RDM;
             results.push( S );
         }
@@ -977,13 +1095,13 @@ class CMatrix {
         n, // number of qubits in the circuit
         stateVector // a matrix of size (2**n)x1, i.e. a column vector
     ) {
-        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "CMatrix.printAnalysisOfEachQubit(): state vector has invalid size" );
-        let DM = CMatrix.computeDensityMatrix( n, stateVector );
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.printAnalysisOfEachQubit(): state vector has invalid size" );
+        let DM = Sim.computeDensityMatrix( n, stateVector );
         console.log("Density matrix is\n" + DM.toString({decimalPrecision:2}) + "\nwith trace " + DM.trace() + " and purity " + (CMatrix.mult(DM,DM)).trace() );
-        let stats = CMatrix.analyzeEachQubit(n,DM);
+        let stats = Sim.analyzeEachQubit(n,DM);
         for ( let i = 0; i < n; ++i ) {
             let RDM = stats[i].reducedDensityMatrix;
-            console.log(StringUtil.concatenateMultilineStrings(`Reduced density matrix for qubit ${i} is `, RDM.toString(), " with trace " + RDM.trace() + " and purity " + (CMatrix.mult(RDM,RDM)).trace() ));
+            console.log(StringUtil.concatMultiline(`Reduced density matrix for qubit ${i} is `, RDM.toString(), " with trace " + RDM.trace() + " and purity " + (CMatrix.mult(RDM,RDM)).trace() ));
         }
         for ( let i = 0; i < n; ++i ) {
             let S = stats[i];
@@ -1002,6 +1120,7 @@ class CMatrix {
             );
         }
     }
+
     // Returns a matrix of size (n)x(n), whose upper triangular half contains correlation values for pairs of qubits.
     // Each cell (row=i,column=j) of the matrix contains a real number in [-1,1] describing the correlation between qubits i,j
     // (where i>j).
@@ -1009,11 +1128,109 @@ class CMatrix {
     // uncorrelated, and perfectly positive correlation (i.e., when measured, the two qubits are always equal), respectively.
     // The diagonal and lower triangular half of the returned matrix contain zeros.
     // 
+    // 
+    // 
+    // How to compute the correlation between two qubits:
+    // 
+    // Consider two qubits X and Y, each of which is measured to have
+    // a value of either L (for Low) or H (for High).
+    // (Later, we will consider (L,H)=(-1,+1) or (L,H)=(0,1).)
+    // Define the four probabilities
+    //     a = P((X,Y)=(L,L)) = P(X=L and Y=L)
+    //     b = P((X,Y)=(L,H))
+    //     c = P((X,Y)=(H,L))
+    //     d = P((X,Y)=(H,H))
+    // 
+    // where a+b+c+d=1.
+    // https://en.wikipedia.org/wiki/Correlation
+    // explains that
+    // 
+    //     correlation(X,Y)
+    //       = covariance(X,Y) / (sigma_X sigma_Y)
+    //       = ( E(XY) - E(X)E(Y) ) / (sigma_X sigma_Y)
+    // 
+    // where sigma_X = sqrt(E(X^2) - E(X)^2)
+    // and similarly for sigma_Y.
+    // Thus
+    //     covariance(X,Y)
+    //       = E(XY) - E(X)E(Y)
+    //       = aLL + bLH + cHL + dHH - ((a+b)L+(c+d)H) ((a+c)L+(b+d)H)
+    //       = aLL+bLH+cHL+dHH - (aL+bL+cH+dH)(aL+cL+bH+dH)
+    //       = aLL+bLH+cHL+dHH - (aaLL+abLL+acLL+bcLL + abLH+acLH+2adLH+bbLH+bdLH+ccLH+cdLH + bcHH+bdHH+cdHH+ddHH)
+    // 
+    // If we set (L,H)=(-1,+1), then sigma_X = sigma_Y = 1,
+    // and
+    //     covariance(X,Y)
+    //       = a-b-c+d - (aa+ab+ac+bc - ab-ac-2ad-bb-bd-cc-cd + bc+bd+cd+dd)
+    //       = a-b-c+d - (aa+2bc -2ad-bb-cc +dd)
+    //       = a+d-b-c - (aa+dd+2bc-2ad-bb-cc)
+    //     correlation(X,Y)
+    //       = a+d-b-c - (aa+dd+2bc-2ad-bb-cc)
+    // Recall that a=1-b-c-d. Substituting, we find
+    //     correlation(X,Y)
+    //       = (1-b-c-d)+d-b-c - ((1-b-c-d)^2+dd+2bc-2(1-b-c-d)d-bb-cc)
+    //       = 1-2b-2c - ((1-b-c-d)^2+dd+2bc -2(d-bd-cd-dd) -bb-cc)
+    //       = 1-2b-2c+2d +bb-2bc-2bd+cc-2cd-3dd - ((1-b-c-d)^2) 
+    //       = 1-2b-2c+2d +bb-2bc-2bd+cc-2cd-3dd - (1-2b-2c-2d+bb+2bc+2bd+cc+2cd+dd)
+    //       = 4d -4bc-4bd-4cd-4dd
+    //       = 4(d-bd-cd-dd -bc)
+    //       = 4((1-b-c-d)d -bc)
+    //       = 4(ad-bc)    [1]
+    // 
+    // As a sanity check, set (L,H)=(0,1),
+    // then sigma_X = sigma_Y = sqrt(0.5-0.5^2)=0.5,
+    // and
+    //     covariance(X,Y) = d - (bc+bd+cd+dd)
+    //     correlation(X,Y)
+    //       = (d - (bc+bd+cd+dd))/(0.5 0.5)
+    //       = 4 (d - (bc+bd+cd+dd))
+    //       = 4 (d - dd - bc - bd - cd)
+    //       = 4( d - bc - (b+c+d)d )
+    //       = 4( d - bc - (1-a)d )
+    //       = 4( ad - bc )   [2]
+    // We see that equation [2] is equivalent to [1].
+    // 
+    // As another sanity check, consider
+    // the symmetrical situation
+    // a=d and b=c, and define p=a=d.
+    // Then b=c=0.5-p, and [2] yields
+    //     correlation(X,Y)
+    //       = 4( p^2 - (0.5-p)^2 )
+    //       = 4( p^2 - 0.25+p-p^2 )
+    //       = 4( -0.25+p )
+    //       = 4p - 1
+    // which yields -1,0,1, for p=0,0.25,0.5, respectively,
+    // as expected.
+    // 
+    // As another sanity check, consider
+    // the case b=c=0 (hence a+d=1).
+    // Then [2] yields
+    //     correlation(X,Y)
+    //       = 4ad
+    // which reaches a maximum of 1 when a=d=0.5.
+    // Alternatively, consider the case a=d=0
+    // (hence b+c=1), then [2] yields
+    //     correlation(X,Y) = -4bc
+    // which has a minimum of -1 when b=c=0.5
+    // 
+    // As another sanity check, consider the case
+    // where X and Y are independent, with
+    // probabilities
+    //     p = P(X=H)
+    //     q = P(Y=H)
+    // Then P(X=L)=(1-p), P(Y=L)=(1-q),
+    // a=(1-p)(1-q), b=(1-p)q, c=p(1-q), d=pq,
+    // and we find
+    //     correlation(X,Y)
+    //       = 4( (1-p)(1-q)pq - (1-p)qp(1-q) )
+    //       = 0
+    // as expected.
+    // 
     static computePairwiseQubitCorrelations( // TODO this needs more testing
         n, // number of qubits in the circuit
         stateVector // a matrix of size (2**n)x1, i.e. a column vector
     ) {
-        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "CMatrix.computePairwiseQubitCorrelations(): state vector has invalid size" );
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.computePairwiseQubitCorrelations(): state vector has invalid size" );
 
         // compute the probability of each base state
         let baseStateProbabilities = new CMatrix( stateVector._rows, 1 );
@@ -1032,7 +1249,7 @@ class CMatrix {
                     let bit_j = (k>>j) & 1;
                     p[ bit_i ][ bit_j ] += baseStateProbabilities.get(k,0)._r;
                 }
-                let correlation = p[0][0]+p[1][1]-p[0][1]-p[1][0];
+                let correlation = 4*( p[0][0]*p[1][1] - p[0][1]*p[1][0] );
                 result.set( i, j, correlation );
                 console.log(`${i},${j}: `+StringUtil.numToString(p[0][0])+"+"+StringUtil.numToString(p[0][1])+"+"+StringUtil.numToString(p[1][0])+"+"+StringUtil.numToString(p[1][1])+"="+StringUtil.numToString(p[0][0]+p[0][1]+p[1][0]+p[1][1])+", diff="+StringUtil.numToString(correlation));
             }
@@ -1058,67 +1275,78 @@ class CMatrix {
         // Here we define the six canonical points on the Bloch sphere.
         //
         // |0>
-        CMatrix.braZero = CMatrix.createRowVector([1,0]);
-        CMatrix.ketZero = CMatrix.createColVector([1,0]);
+        Sim.braZero = CMatrix.createRowVector([1,0]);
+        Sim.ketZero = CMatrix.createColVector([1,0]);
         // |1>
-        CMatrix.braOne = CMatrix.createRowVector([0,1]);
-        CMatrix.ketOne = CMatrix.createColVector([0,1]);
+        Sim.braOne = CMatrix.createRowVector([0,1]);
+        Sim.ketOne = CMatrix.createColVector([0,1]);
         // |+>
-        CMatrix.ketPlus = CMatrix.createColVector([Math.SQRT1_2,Math.SQRT1_2]);
-        CMatrix.braPlus = CMatrix.ketPlus.conjugateTranspose();
+        Sim.ketPlus = CMatrix.createColVector([Math.SQRT1_2,Math.SQRT1_2]);
+        Sim.braPlus = Sim.ketPlus.conjugateTranspose();
         // |->
-        CMatrix.ketMinus = CMatrix.createColVector([Math.SQRT1_2,-Math.SQRT1_2]);
-        CMatrix.braMinus = CMatrix.ketMinus.conjugateTranspose();
+        Sim.ketMinus = CMatrix.createColVector([Math.SQRT1_2,-Math.SQRT1_2]);
+        Sim.braMinus = Sim.ketMinus.conjugateTranspose();
         // |+i>
-        CMatrix.ketPlusI = CMatrix.createColVector([Math.SQRT1_2,new Complex(0,Math.SQRT1_2)]);
-        CMatrix.braPlusI = CMatrix.ketPlusI.conjugateTranspose();
+        Sim.ketPlusI = CMatrix.createColVector([Math.SQRT1_2,new Complex(0,Math.SQRT1_2)]);
+        Sim.braPlusI = Sim.ketPlusI.conjugateTranspose();
         // |-i>
-        CMatrix.ketMinusI = CMatrix.createColVector([Math.SQRT1_2,new Complex(0,-Math.SQRT1_2)]);
-        CMatrix.braMinusI = CMatrix.ketMinusI.conjugateTranspose();
+        Sim.ketMinusI = CMatrix.createColVector([Math.SQRT1_2,new Complex(0,-Math.SQRT1_2)]);
+        Sim.braMinusI = Sim.ketMinusI.conjugateTranspose();
 
         // Here we define some commonly used logic gates.
         //
-        CMatrix.gate2x2zero = new CMatrix(2,2);
-        CMatrix.gate2x2identity = CMatrix.identity(2);
-        CMatrix.gate2x2hadamard = CMatrix.mult( CMatrix.create([[1,1],[1,-1]]), Math.SQRT1_2 );
+        Sim.ZERO = new CMatrix(2,2);
+        Sim.I = CMatrix.identity(2);  // identity gate for a single qubit
+        Sim.H = CMatrix.mult( CMatrix.create([[1,1],[1,-1]]), Math.SQRT1_2 ); // hadamard gate
 
-        CMatrix.gate2x2not = CMatrix.create([[0,1],[1,0]]); // same as Pauli X
-        CMatrix.gate2x2y = CMatrix.create([[new Complex(0,0),new Complex(0,-1)],[new Complex(0,1),new Complex(0,0)]]);
-        CMatrix.gate2x2z = CMatrix.create([[1,0],[0,-1]]);
-        CMatrix.gate2x2rootx = CMatrix.mult(
+        Sim.X = CMatrix.create([[0,1],[1,0]]); // a Pauli X gate, also called a NOT gate
+        Sim.Y = CMatrix.create([[new Complex(0,0),new Complex(0,-1)],[new Complex(0,1),new Complex(0,0)]]);
+        Sim.Z = CMatrix.create([[1,0],[0,-1]]); // the same thing as Phase(180)
+
+        // "SX" means "Square root of X"
+        Sim.SX = CMatrix.mult(
             CMatrix.create([[new Complex(1,1),new Complex(1,-1)],[new Complex(1,-1),new Complex(1,1)]]),
             0.5
         );
-        CMatrix.gate2x2rooty = CMatrix.mult(
+        // "SY" means "Square root of Y"
+        Sim.SY = CMatrix.mult(
             CMatrix.create([[new Complex(1,1),new Complex(-1,-1)],[new Complex(1,1),new Complex(1,1)]]),
             0.5
         );
-        CMatrix.gate2x2rootz = CMatrix.create(
+        // "SZ" means "Square root of Z"; the same thing as Phase(90)
+        Sim.SZ = CMatrix.create(
             [[new Complex(1,0),new Complex(0,0)],[new Complex(0,0),new Complex(0,1)]]
         );
+
+
+        // The "SS" prefix in "SSX", "SSY", "SSZ" means "Square root of Square root", i.e., 4th root.
+        // SSZ is the same thing as Phase(45).
+        //
         //let cos_pi_over_8 = Math.cos(Math.PI/8);
         //let sin_pi_over_8 = Math.sin(Math.PI/8);
         let c1 = new Complex( (2+Math.SQRT2)/4 /* cos_pi_over_8*cos_pi_over_8 */, Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */ );
         let c2 = new Complex( (2-Math.SQRT2)/4 /* sin_pi_over_8*sin_pi_over_8 */, - Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */ );
-        CMatrix.gate2x2fourthrootx = CMatrix.create([[c1,c2],[c2,c1]]);
+        Sim.SSX = CMatrix.create([[c1,c2],[c2,c1]]);
         c2 = new Complex( - Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */, - (2-Math.SQRT2)/4 /* sin_pi_over_8*sin_pi_over_8 */ );
         let c3 = new Complex( Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */, (2-Math.SQRT2)/4 /* sin_pi_over_8*sin_pi_over_8 */ );
-        CMatrix.gate2x2fourthrooty = CMatrix.create([[c1,c2],[c3,c1]]);
-        CMatrix.gate2x2fourthrootz = CMatrix.create(
+        Sim.SSY = CMatrix.create([[c1,c2],[c3,c1]]);
+        Sim.SSZ = CMatrix.create(
             [[new Complex(1,0),new Complex(0,0)],[new Complex(0,0),new Complex(Math.SQRT1_2,Math.SQRT1_2)]]
         );
 
-        CMatrix.gate2x2rx90degrees = CMatrix.create([[new Complex(Math.SQRT1_2,0),new Complex(0,-Math.SQRT1_2)],[new Complex(0,-Math.SQRT1_2),new Complex(Math.SQRT1_2,0)]]);
-        CMatrix.gate2x2ry90degrees = CMatrix.create([[new Complex(Math.SQRT1_2,0),new Complex(-Math.SQRT1_2,0)],[new Complex(Math.SQRT1_2,0),new Complex(Math.SQRT1_2,0)]]);
-        CMatrix.gate2x2rz90degrees = CMatrix.create([[new Complex(Math.SQRT1_2,-Math.SQRT1_2),new Complex(0,0)],[new Complex(0,0),new Complex(Math.SQRT1_2,Math.SQRT1_2)]]);
+
+        Sim.RX_90deg = CMatrix.create([[new Complex(Math.SQRT1_2,0),new Complex(0,-Math.SQRT1_2)],[new Complex(0,-Math.SQRT1_2),new Complex(Math.SQRT1_2,0)]]);
+        Sim.RY_90deg = CMatrix.create([[new Complex(Math.SQRT1_2,0),new Complex(-Math.SQRT1_2,0)],[new Complex(Math.SQRT1_2,0),new Complex(Math.SQRT1_2,0)]]);
+        Sim.RZ_90deg = CMatrix.create([[new Complex(Math.SQRT1_2,-Math.SQRT1_2),new Complex(0,0)],[new Complex(0,0),new Complex(Math.SQRT1_2,Math.SQRT1_2)]]);
 
         // qubit q0 is the control bit, qubit q1 is the target bit.
-        CMatrix.gate4x4cnot = CMatrix.create([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]).reverseEndianness( ! usingTextbookConvention );
-        CMatrix.gate4x4swap = CMatrix.wireSwap(0,1,2);
+        // CX is also often called CNOT
+        Sim.CX = CMatrix.create([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]).reverseEndianness( ! usingTextbookConvention );
+        Sim.SWAP_2 = Sim.SWAP(0,1,2); // a swap gate for a two-qubit circuit
     }
 }
 
-CMatrix.init();
+Sim.init();
 
 
 
@@ -1137,11 +1365,11 @@ function performRegressionTest( verbose=true ) {
     //                              |
     // qubit q1 |0>----------------(+)----
     //
-    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
-    step1 = CMatrix.tensor( CMatrix.gate2x2identity /*q1*/, CMatrix.gate2x2hadamard /*q0*/, usingTextbookConvention );
-    step2 = CMatrix.gate4x4cnot;
+    input = CMatrix.tensor( Sim.ketZero /*q1*/, Sim.ketZero /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.tensor( Sim.I /*q1*/, Sim.H /*q0*/, usingTextbookConvention );
+    step2 = Sim.CX;
     output = CMatrix.naryMult([ step2, step1, input ]);
-    if ( verbose) console.log(StringUtil.concatenateMultilineStrings(
+    if ( verbose) console.log(StringUtil.concatMultiline(
         step2.toString(),
         " * ",
         step1.toString(),
@@ -1164,11 +1392,11 @@ function performRegressionTest( verbose=true ) {
     //                 |
     // qubit q1 |0>---(+)-------
     //
-    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
-    step1 = CMatrix.gate4x4cnot;
-    step2 = CMatrix.tensor( CMatrix.gate2x2identity /*q1*/, CMatrix.gate2x2not /*q0*/, usingTextbookConvention );
+    input = CMatrix.tensor( Sim.ketZero /*q1*/, Sim.ketZero /*q0*/, usingTextbookConvention );
+    step1 = Sim.CX;
+    step2 = CMatrix.tensor( Sim.I /*q1*/, Sim.X /*q0*/, usingTextbookConvention );
     output = CMatrix.naryMult([ step2, step1, input ]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         step2.toString(),
         " * ",
         step1.toString(),
@@ -1191,11 +1419,11 @@ function performRegressionTest( verbose=true ) {
     //                 |
     // qubit q1 |0>---(+)-------
     //
-    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketOne /*q0*/, usingTextbookConvention  );
-    step1 = CMatrix.gate4x4cnot;
-    step2 = CMatrix.tensor( CMatrix.gate2x2identity /*q1*/, CMatrix.gate2x2not /*q0*/, usingTextbookConvention );
+    input = CMatrix.tensor( Sim.ketZero /*q1*/, Sim.ketOne /*q0*/, usingTextbookConvention  );
+    step1 = Sim.CX;
+    step2 = CMatrix.tensor( Sim.I /*q1*/, Sim.X /*q0*/, usingTextbookConvention );
     output = CMatrix.naryMult([ step2, step1, input ]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         step2.toString(),
         " * ",
         step1.toString(),
@@ -1218,11 +1446,11 @@ function performRegressionTest( verbose=true ) {
     //                 |
     // qubit q1 |i>---(+)-------
     //
-    input = CMatrix.tensor( CMatrix.ketPlusI /*q1*/, CMatrix.ketPlus /*q0*/, usingTextbookConvention );
-    step1 = CMatrix.gate4x4cnot;
-    step2 = CMatrix.tensor( CMatrix.gate2x2identity /*q1*/, CMatrix.gate2x2not /*q0*/, usingTextbookConvention );
+    input = CMatrix.tensor( Sim.ketPlusI /*q1*/, Sim.ketPlus /*q0*/, usingTextbookConvention );
+    step1 = Sim.CX;
+    step2 = CMatrix.tensor( Sim.I /*q1*/, Sim.X /*q0*/, usingTextbookConvention );
     output = CMatrix.naryMult([ step2, step1, input ]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         step2.toString(),
         " * ",
         step1.toString(),
@@ -1245,11 +1473,11 @@ function performRegressionTest( verbose=true ) {
     //                                 |
     // qubit q1 |0>----RX(pi/2)----(RZ(pi/2))---
     //
-    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
-    step1 = CMatrix.tensor( CMatrix.gate2x2rx90degrees /*q1*/, CMatrix.gate2x2rx90degrees /*q0*/, usingTextbookConvention );
+    input = CMatrix.tensor( Sim.ketZero /*q1*/, Sim.ketZero /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.tensor( Sim.RX_90deg /*q1*/, Sim.RX_90deg /*q0*/, usingTextbookConvention );
     output = CMatrix.mult( step1, input );
-    output = CMatrix.transformStateVectorWith2x2( CMatrix.gate2x2rz90degrees,1,2,output,[[0,true]]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    output = Sim.transformStateVectorWith2x2( Sim.RZ_90deg,1,2,output,[[0,true]]);
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         "... = ",
         output.toString({binaryPrefixes:true})
     ));
@@ -1267,11 +1495,11 @@ function performRegressionTest( verbose=true ) {
     //
     // qubit q1 |0>----(y^0.25)-----(x^0.25)----
     //
-    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
-    step1 = CMatrix.tensor( CMatrix.gate2x2fourthrooty /*q1*/, CMatrix.gate2x2fourthrootx /*q0*/, usingTextbookConvention );
-    step2 = CMatrix.tensor( CMatrix.gate2x2fourthrootx /*q1*/, CMatrix.gate2x2identity /*q0*/, usingTextbookConvention );
+    input = CMatrix.tensor( Sim.ketZero /*q1*/, Sim.ketZero /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.tensor( Sim.SSY /*q1*/, Sim.SSX /*q0*/, usingTextbookConvention );
+    step2 = CMatrix.tensor( Sim.SSX /*q1*/, Sim.I /*q0*/, usingTextbookConvention );
     output = CMatrix.naryMult([ step2, step1, input ]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         step2.toString(),
         " * ",
         step1.toString(),
@@ -1296,12 +1524,12 @@ function performRegressionTest( verbose=true ) {
     //                                          |
     // qubit q2 |0>-------H---------------------X-----
     //
-    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention );
-    step1 = CMatrix.naryTensor( [ CMatrix.gate2x2hadamard /*q2*/, CMatrix.gate2x2fourthrooty /*q1*/, CMatrix.gate2x2fourthrootx /*q0*/ ], usingTextbookConvention );
-    step2 = CMatrix.naryTensor( [ CMatrix.gate2x2identity /*q2*/, CMatrix.gate2x2fourthrootx /*q1*/, CMatrix.gate2x2identity /*q0*/ ], usingTextbookConvention );
-    step3 = CMatrix.wireSwap(1,2,3);
+    input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ], usingTextbookConvention );
+    step1 = CMatrix.naryTensor( [ Sim.H /*q2*/, Sim.SSY /*q1*/, Sim.SSX /*q0*/ ], usingTextbookConvention );
+    step2 = CMatrix.naryTensor( [ Sim.I /*q2*/, Sim.SSX /*q1*/, Sim.I /*q0*/ ], usingTextbookConvention );
+    step3 = Sim.SWAP(1,2,3);
     output = CMatrix.naryMult([ step3, step2, step1, input ]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         step3.toString(),
         " * ",
         step2.toString({decimalPrecision:1}),
@@ -1339,12 +1567,12 @@ function performRegressionTest( verbose=true ) {
     //                                           |
     // qubit q2 |0>-------H----------------------o------
     //
-    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention );
-    step1 = CMatrix.naryTensor( [ CMatrix.gate2x2hadamard /*q2*/, CMatrix.gate2x2fourthrooty /*q1*/, CMatrix.gate2x2fourthrootx /*q0*/ ], usingTextbookConvention );
-    step2 = CMatrix.naryTensor( [ CMatrix.gate2x2identity /*q2*/, CMatrix.gate2x2fourthrootx /*q1*/, CMatrix.gate2x2identity /*q0*/ ], usingTextbookConvention );
-    step3 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 2, 1, 3 );
+    input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ], usingTextbookConvention );
+    step1 = CMatrix.naryTensor( [ Sim.H /*q2*/, Sim.SSY /*q1*/, Sim.SSX /*q0*/ ], usingTextbookConvention );
+    step2 = CMatrix.naryTensor( [ Sim.I /*q2*/, Sim.SSX /*q1*/, Sim.I /*q0*/ ], usingTextbookConvention );
+    step3 = Sim.expand4x4ForNWires( Sim.CX, 2, 1, 3 );
     output = CMatrix.naryMult([ step3, step2, step1, input ]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         step3.toString(),
         " * ",
         step2.toString({decimalPrecision:1}),
@@ -1380,13 +1608,13 @@ function performRegressionTest( verbose=true ) {
     //                                           |
     // qubit q2 |0>-------H----------------------o------
     //
-    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention  );
-    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,2,3,input,[]);
-    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrooty,1,3,step1,[]);
-    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrootx,0,3,step1,[]);
-    step2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrootx,1,3,step1,[]);
-    output = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,1,3,step2,[[2,true]]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ], usingTextbookConvention  );
+    step1 = Sim.transformStateVectorWith2x2(Sim.H,2,3,input,[]);
+    step1 = Sim.transformStateVectorWith2x2(Sim.SSY,1,3,step1,[]);
+    step1 = Sim.transformStateVectorWith2x2(Sim.SSX,0,3,step1,[]);
+    step2 = Sim.transformStateVectorWith2x2(Sim.SSX,1,3,step1,[]);
+    output = Sim.transformStateVectorWith2x2(Sim.X,1,3,step2,[[2,true]]);
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         input.toString(),
         " -> ",
         step1.toString(),
@@ -1411,11 +1639,11 @@ function performRegressionTest( verbose=true ) {
     //                           |
     // qubit q1 |->---(x^0.5)---(+)----
     //
-    input = CMatrix.tensor( CMatrix.ketMinus /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
-    step1 = CMatrix.tensor( CMatrix.gate2x2rootx /*q1*/, CMatrix.gate2x2rootx /*q0*/, usingTextbookConvention );
-    step2 = CMatrix.gate4x4cnot;
+    input = CMatrix.tensor( Sim.ketMinus /*q1*/, Sim.ketZero /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.tensor( Sim.SX /*q1*/, Sim.SX /*q0*/, usingTextbookConvention );
+    step2 = Sim.CX;
     output = CMatrix.naryMult([ step2, step1, input ]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         step2.toString(),
         " * ",
         step1.toString(),
@@ -1443,12 +1671,12 @@ function performRegressionTest( verbose=true ) {
     //                                     |
     // qubit q1 |0>-----(+)-----(x^0.5)---(+)----
     //
-    input = CMatrix.tensor( CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/, usingTextbookConvention );
-    step1 = CMatrix.tensor( CMatrix.gate2x2not /*q1*/, CMatrix.gate2x2rootx /*q0*/, usingTextbookConvention );
-    step2 = CMatrix.tensor( CMatrix.gate2x2rootx /*q1*/, CMatrix.gate2x2hadamard /*q0*/, usingTextbookConvention );
-    step3 = CMatrix.gate4x4cnot;
+    input = CMatrix.tensor( Sim.ketZero /*q1*/, Sim.ketZero /*q0*/, usingTextbookConvention );
+    step1 = CMatrix.tensor( Sim.X /*q1*/, Sim.SX /*q0*/, usingTextbookConvention );
+    step2 = CMatrix.tensor( Sim.SX /*q1*/, Sim.H /*q0*/, usingTextbookConvention );
+    step3 = Sim.CX;
     output = CMatrix.naryMult([ step3, step2, step1, input ]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         step3.toString(),
         " * ",
         step2.toString(),
@@ -1480,11 +1708,11 @@ function performRegressionTest( verbose=true ) {
     //                          |
     // qubit q2 |0>---(x^0.5)---o----
     //
-    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention  );
-    step1 = CMatrix.naryTensor( [ CMatrix.gate2x2rootx /*q2*/, CMatrix.gate2x2rootx /*q1*/, CMatrix.gate2x2rootx /*q0*/ ], usingTextbookConvention  );
-    step2 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 2, 1, 3 );
+    input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ], usingTextbookConvention  );
+    step1 = CMatrix.naryTensor( [ Sim.SX /*q2*/, Sim.SX /*q1*/, Sim.SX /*q0*/ ], usingTextbookConvention  );
+    step2 = Sim.expand4x4ForNWires( Sim.CX, 2, 1, 3 );
     output = CMatrix.naryMult([ step2, step1, input ]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         step2.toString(),
         " * ",
         step1.toString(),
@@ -1516,12 +1744,12 @@ function performRegressionTest( verbose=true ) {
     //                          |
     // qubit q2 |0>---(x^0.5)---o----
     //
-    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention  );
-    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,0,3,input,[]);
-    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,1,3,step1,[]);
-    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,2,3,step1,[]);
-    output = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,1,3,step1,[[2,true]]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ], usingTextbookConvention  );
+    step1 = Sim.transformStateVectorWith2x2(Sim.SX,0,3,input,[]);
+    step1 = Sim.transformStateVectorWith2x2(Sim.SX,1,3,step1,[]);
+    step1 = Sim.transformStateVectorWith2x2(Sim.SX,2,3,step1,[]);
+    output = Sim.transformStateVectorWith2x2(Sim.X,1,3,step1,[[2,true]]);
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         input.toString(),
         " -> ",
         step1.toString(),
@@ -1546,15 +1774,15 @@ function performRegressionTest( verbose=true ) {
     //                                      |
     // qubit q3 |0>---(x^0.5)--------------(+)--------------
     //
-    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q3*/, CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ], usingTextbookConvention );
-    step1 = CMatrix.naryTensor( [ CMatrix.gate2x2rootx /*q3*/, CMatrix.gate2x2identity /*q2*/, CMatrix.gate2x2rootx /*q1*/, CMatrix.gate2x2hadamard /*q0*/ ], usingTextbookConvention );
-    step2 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 0, 2, 4 );
-    step3 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 2, 1, 4 );
-    step4 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 1, 3, 4 );
-    step5 = CMatrix.naryTensor( [ CMatrix.gate2x2identity /*q3*/, CMatrix.gate2x2identity /*q2*/, CMatrix.gate2x2hadamard /*q1*/, CMatrix.gate2x2identity /*q0*/ ], usingTextbookConvention );
+    input = CMatrix.naryTensor( [ Sim.ketZero /*q3*/, Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ], usingTextbookConvention );
+    step1 = CMatrix.naryTensor( [ Sim.SX /*q3*/, Sim.I /*q2*/, Sim.SX /*q1*/, Sim.H /*q0*/ ], usingTextbookConvention );
+    step2 = Sim.expand4x4ForNWires( Sim.CX, 0, 2, 4 );
+    step3 = Sim.expand4x4ForNWires( Sim.CX, 2, 1, 4 );
+    step4 = Sim.expand4x4ForNWires( Sim.CX, 1, 3, 4 );
+    step5 = CMatrix.naryTensor( [ Sim.I /*q3*/, Sim.I /*q2*/, Sim.H /*q1*/, Sim.I /*q0*/ ], usingTextbookConvention );
 
     output = CMatrix.naryMult([ step5, step4, step3, step2, step1, input ]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         "... = ",
         output.toString({binaryPrefixes:true})
     ));
@@ -1581,14 +1809,14 @@ function performRegressionTest( verbose=true ) {
     allSuccessful &= success;
 
     // Try simulating the same circuit, but this time without using explicit large matrices.
-    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,0,4,input,[]);
-    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,1,4,output_method2,[]);
-    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,3,4,output_method2,[]);
-    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,2,4,output_method2,[[0,true]]);
-    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,1,4,output_method2,[[2,true]]);
-    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,3,4,output_method2,[[1,true]]);
-    output_method2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,1,4,output_method2,[]);
-    if ( verbose ) console.log(StringUtil.concatenateMultilineStrings(
+    output_method2 = Sim.transformStateVectorWith2x2(Sim.H,0,4,input,[]);
+    output_method2 = Sim.transformStateVectorWith2x2(Sim.SX,1,4,output_method2,[]);
+    output_method2 = Sim.transformStateVectorWith2x2(Sim.SX,3,4,output_method2,[]);
+    output_method2 = Sim.transformStateVectorWith2x2(Sim.X,2,4,output_method2,[[0,true]]);
+    output_method2 = Sim.transformStateVectorWith2x2(Sim.X,1,4,output_method2,[[2,true]]);
+    output_method2 = Sim.transformStateVectorWith2x2(Sim.X,3,4,output_method2,[[1,true]]);
+    output_method2 = Sim.transformStateVectorWith2x2(Sim.H,1,4,output_method2,[]);
+    if ( verbose ) console.log(StringUtil.concatMultiline(
         "Difference found using a better method: ",
         CMatrix.diff(output,output_method2).transpose().toString()
     ));
@@ -1619,10 +1847,10 @@ for ( let ii = 0; ii < n; ++ii ){ // control bit
     for ( jj = 0; jj < n; ++jj ) { // 2x2 gate bit
         if ( ii===jj )
             continue;
-        m_method1 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, ii, jj, n );
+        m_method1 = Sim.expand4x4ForNWires( Sim.CX, ii, jj, n );
         r_method1 = CMatrix.mult( m_method1, sv );
-        m_method2 = CMatrix.gate2x2not;
-        r_method2 = CMatrix.transformStateVectorWith2x2(m_method2,jj,n,sv,[[ii,true]]);
+        m_method2 = Sim.X;
+        r_method2 = Sim.transformStateVectorWith2x2(m_method2,jj,n,sv,[[ii,true]]);
         //console.log(r_method1.toString());
         //console.log(r_method2.toString());
         console.log(`    control bit on wire ${ii}, 2x2 gate on wire ${jj}, difference is ` + CMatrix.diff(r_method1,r_method2).transpose().toString());
@@ -1641,15 +1869,15 @@ for ( let ii = 0; ii < n; ++ii ) {
     // apply a gate to the (ii)th wire
     if ( ii%3===0 ) {
         console.log(`h at ${ii}`);
-        sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,ii,n,sv,[]);
+        sv = Sim.transformStateVectorWith2x2(Sim.H,ii,n,sv,[]);
     }
     else if ( ii%3===1 ) {
         console.log(`rootx at ${ii}`);
-        sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rootx,ii,n,sv,[]);
+        sv = Sim.transformStateVectorWith2x2(Sim.SX,ii,n,sv,[]);
     }
     else {
         console.log(`fourthrooty at ${ii}`);
-        sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrooty,ii,n,sv,[]);
+        sv = Sim.transformStateVectorWith2x2(Sim.SSY,ii,n,sv,[]);
     }
     numGates ++;
 }
@@ -1664,7 +1892,7 @@ for ( let ii = 0; ii < Math.floor(n/2); ++ii ) {
     if ( jj3 === jj1 || jj3 === jj2 ) jj3++;
     Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && 0<=jj3 && jj3<n && jj1!==jj2 && jj2!==jj3 && jj1!==jj3, "unexpected condition 1" );
     console.log(`ccnot at ${jj1}, ${jj2}, ${jj3}`);
-    sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,jj3,n,sv,[[jj1,true],[jj2,true]]);
+    sv = Sim.transformStateVectorWith2x2(Sim.X,jj3,n,sv,[[jj1,true],[jj2,true]]);
     numGates ++;
     console.log("output is "+sv.transpose().toString());
 
@@ -1674,7 +1902,7 @@ for ( let ii = 0; ii < Math.floor(n/2); ++ii ) {
     if ( jj2 === jj1 ) jj2=n-1;
     Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 2" );
     console.log(`swap at ${jj1}, ${jj2}`);
-    sv = CMatrix.transformStateVectorWithSwap(jj1,jj2,n,sv);
+    sv = Sim.transformStateVectorWithSwap(jj1,jj2,n,sv);
     numGates ++;
     console.log("output is "+sv.transpose().toString());
 
@@ -1684,7 +1912,7 @@ for ( let ii = 0; ii < Math.floor(n/2); ++ii ) {
     if ( jj2 === jj1 ) jj2=n-1;
     Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 3" );
     console.log(`cnot at ${jj1}, ${jj2}`);
-    sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,jj2,n,sv,[[jj1,true]]);
+    sv = Sim.transformStateVectorWith2x2(Sim.X,jj2,n,sv,[[jj1,true]]);
     numGates ++;
     console.log("output is "+sv.transpose().toString());
 
@@ -1694,7 +1922,7 @@ for ( let ii = 0; ii < Math.floor(n/2); ++ii ) {
     if ( jj2 === jj1 ) jj2=n-1;
     Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 4" );
     console.log(`cfourthrootx at ${jj1}, ${jj2}`);
-    sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrootx,jj2,n,sv,[[jj1,true]]);
+    sv = Sim.transformStateVectorWith2x2(Sim.SSX,jj2,n,sv,[[jj1,true]]);
     numGates ++;
     console.log("output is "+sv.transpose().toString());
 
@@ -1704,7 +1932,7 @@ for ( let ii = 0; ii < Math.floor(n/2); ++ii ) {
     if ( jj2 === jj1 ) jj2=n-1;
     Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 5" );
     console.log(`cfourthrooty at ${jj1}, ${jj2}`);
-    sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrooty,jj2,n,sv,[[jj1,true]]);
+    sv = Sim.transformStateVectorWith2x2(Sim.SSY,jj2,n,sv,[[jj1,true]]);
     numGates ++;
     console.log("output is "+sv.transpose().toString());
 
@@ -1714,7 +1942,7 @@ for ( let ii = 0; ii < Math.floor(n/2); ++ii ) {
     if ( jj2 === jj1 ) jj2=n-1;
     Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 6" );
     console.log(`ch at ${jj1}, ${jj2}`);
-    sv = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,jj2,n,sv,[[jj1,true]]);
+    sv = Sim.transformStateVectorWith2x2(Sim.H,jj2,n,sv,[[jj1,true]]);
     numGates ++;
     console.log("output is "+sv.transpose().toString());
 }

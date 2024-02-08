@@ -34,7 +34,7 @@ Next, we create a matrix containing complex numbers, add two matrices together, 
 
     let m2 = CMatrix.create([[new Complex(0,1),new Complex(2,3)],[new Complex(5,7),new Complex(-1,-3)]]);
     let m3 = CMatrix.sum(m1,m2);
-    console.log(StringUtil.concatenateMultilineStrings(m1.toString()," + ",m2.toString()," = ",m3.toString()));
+    console.log(StringUtil.concatMultiline(m1.toString()," + ",m2.toString()," = ",m3.toString()));
 
 which produces this output:
 
@@ -44,7 +44,7 @@ which produces this output:
 Similarly, there are static methods in the CMatrix class for subtracting matrices (diff(m1,m2)), multiplying matrices (mult(m1,m2) and naryMult([m1,m2,...])), and for computing their tensor product (tensor(m1,m2) and naryTensor([m1,m2,...])).
 The CMatrix class also has some predefined vectors and matrices.  For example,
 
-    console.log(CMatrix.ketOne.toString());
+    console.log(Sim.ketOne.toString());
 
 prints the column vector |1>:
 
@@ -53,7 +53,7 @@ prints the column vector |1>:
 
 and
 
-    console.log(CMatrix.gate4x4cnot.toString());
+    console.log(Sim.CX.toString());
 
 prints the 4x4 matrix for the CNOT gate:
 
@@ -64,7 +64,7 @@ prints the 4x4 matrix for the CNOT gate:
 
 Notice that zeros are replaced with underscores to make it easier for a human to read sparse matrices (to change this behavior, you can call toString({suppressZeros:false}) or toString({charToReplaceSuppressedZero:'.'})).  You might also notice that the matrix for the CNOT gate looks different from the way it is usually presented in textbooks or other sources.  This is related to the ordering of bits and ordering of tensor products.  Search for the usingTextbookConvention flag in the source code for comments that explain this, and set that flag to true if you prefer the textbook ordering.  We can also call a method on a matrix (or a vector) to change its ordering:
 
-    console.log(CMatrix.gate4x4cnot.reverseEndianness().toString());
+    console.log(Sim.CX.reverseEndianness().toString());
 
 prints the 4x4 matrix for the CNOT gate in its more usual form:
 
@@ -87,12 +87,12 @@ To simulate a circuit, there are two approaches.  The first involves storing one
     //                                           |
     // qubit q2 |0>-------H----------------------o------
     //
-    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ] );
-    step1 = CMatrix.naryTensor( [ CMatrix.gate2x2hadamard /*q2*/, CMatrix.gate2x2fourthrooty /*q1*/, CMatrix.gate2x2fourthrootx /*q0*/ ] );
-    step2 = CMatrix.naryTensor( [ CMatrix.gate2x2identity /*q2*/, CMatrix.gate2x2fourthrootx /*q1*/, CMatrix.gate2x2identity /*q0*/ ] );
-    step3 = CMatrix.expand4x4ForNWires( CMatrix.gate4x4cnot, 2, 1, 3 );
+    input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
+    step1 = CMatrix.naryTensor( [ Sim.H /*q2*/, Sim.SSY /*q1*/, Sim.SSX /*q0*/ ] );
+    step2 = CMatrix.naryTensor( [ Sim.I /*q2*/, Sim.SSX /*q1*/, Sim.I /*q0*/ ] );
+    step3 = Sim.expand4x4ForNWires( Sim.CX, 2, 1, 3 );
     output = CMatrix.naryMult([ step3, step2, step1, input ]);
-    console.log(StringUtil.concatenateMultilineStrings(
+    console.log(StringUtil.concatMultiline(
         step3.toString(),
         " * ", step2.toString({decimalPrecision:1}),
         " * ", "...", // step1.toString({decimalPrecision:1}),
@@ -117,13 +117,13 @@ The output is:
 
 A second approach to simulating the same circuit is to not store any explicit matrices of size 2^N x 2^N.  Instead, we only store the state vector of size 2^N x 1, and update it for each stage of the circuit.  The following code does this:
 
-    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q2*/, CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ] );
-    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2hadamard,2,3,input,[]);
-    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrooty,1,3,step1,[]);
-    step1 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrootx,0,3,step1,[]);
-    step2 = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2fourthrootx,1,3,step1,[]);
-    output = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2not,1,3,step2,[[2,true]]);
-    console.log(StringUtil.concatenateMultilineStrings(
+    input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
+    step1 = Sim.transformStateVectorWith2x2(Sim.H,2,3,input,[]);
+    step1 = Sim.transformStateVectorWith2x2(Sim.SSY,1,3,step1,[]);
+    step1 = Sim.transformStateVectorWith2x2(Sim.SSX,0,3,step1,[]);
+    step2 = Sim.transformStateVectorWith2x2(Sim.SSX,1,3,step1,[]);
+    output = Sim.transformStateVectorWith2x2(Sim.X,1,3,step2,[[2,true]]);
+    console.log(StringUtil.concatMultiline(
         input.toString(),
         " -> ", step1.toString(),
         " -> ", step2.toString(),
@@ -131,7 +131,7 @@ A second approach to simulating the same circuit is to not store any explicit ma
     ));
 
 In this second approach, the space and time requirements of each step of the circuit are O(2^N), so, much better than in the first approach.
-The magic happens in the CMatrix.transformStateVectorWith2x2() method, which is based on Quirk’s source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js (<a href="https://github.com/Strilanc/Quirk/blob/master/src/math/Matrix.js#L678">link to specific line</a>)
+The magic happens in the Sim.transformStateVectorWith2x2() method, which is based on Quirk’s source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js (<a href="https://github.com/Strilanc/Quirk/blob/master/src/math/Matrix.js#L678">link to specific line</a>)
 
 More explanation and code examples appear in the slides under the doc folder of the repository.
 
@@ -147,21 +147,21 @@ Purity is a quantity varying from 0.5 to 1.0, indicating how entangled the qubit
 Here is an example computing these statistics with muqcs:
 
     let N = 4; // total qubits
-    input = CMatrix.naryTensor( [ CMatrix.ketZero /*q3*/, CMatrix.ketZero /*q2*/,
-                                  CMatrix.ketZero /*q1*/, CMatrix.ketZero /*q0*/ ] );
-    step1 = CMatrix.naryTensor( [ CMatrix.gate2x2ry(45) /*q3*/, CMatrix.gate2x2rx90degrees /*q2*/,
-                                  CMatrix.gate2x2rx90degrees /*q1*/, CMatrix.gate2x2rx(45) /*q0*/ ] );
-    step2 = CMatrix.naryTensor( [ CMatrix.gate2x2rx(45) /*q3*/, CMatrix.gate2x2rz(120) /*q2*/,
-                                  CMatrix.gate2x2rz(100) /*q1*/, CMatrix.gate2x2identity /*q0*/ ] );
+    input = CMatrix.naryTensor( [ Sim.ketZero /*q3*/, Sim.ketZero /*q2*/,
+                                  Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
+    step1 = CMatrix.naryTensor( [ Sim.RY(45) /*q3*/, Sim.RX90degrees /*q2*/,
+                                  Sim.RX90degrees /*q1*/, Sim.RX(45) /*q0*/ ] );
+    step2 = CMatrix.naryTensor( [ Sim.RX(45) /*q3*/, Sim.RZ(120) /*q2*/,
+                                  Sim.RZ(100) /*q1*/, Sim.I /*q0*/ ] );
     output = CMatrix.naryMult([ step2, step1, input ]);
-    output = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2rz90degrees,2,N,output,[[1,true]]/*list of control qubits*/);
-    output = CMatrix.transformStateVectorWith2x2(CMatrix.gate2x2ry(45),2,N,output,[[3,true]]/*list of control qubits*/);
+    output = Sim.transformStateVectorWith2x2(Sim.RZ_90deg,2,N,output,[[1,true]]/*list of control qubits*/);
+    output = Sim.transformStateVectorWith2x2(Sim.RY(45),2,N,output,[[3,true]]/*list of control qubits*/);
     baseStateProbabilities = new CMatrix( output._rows, 1 );
     for ( let i=0; i < output._rows; ++i ) baseStateProbabilities.set( i, 0, output.get(i,0).mag()**2 );
-    console.log(StringUtil.concatenateMultilineStrings(
+    console.log(StringUtil.concatMultiline(
         "Output: ", output.toString({binaryPrefixes:true}), ", Probabilities: ", baseStateProbabilities.toString()
     ));
-    CMatrix.printAnalysisOfEachQubit(N,output);
+    Sim.printAnalysisOfEachQubit(N,output);
 
 ![Qubit statistics in Muqcs](/doc/qubit-stats-muqcs-1.png)
 
