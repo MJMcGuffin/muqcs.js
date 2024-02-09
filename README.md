@@ -193,6 +193,8 @@ https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B%7B%22id%22%3A%22Rxft%
 
 ![Qubit statistics in Quirk](/doc/qubit-stats-quirk.png)
 
+There is also a subroutine that demonstrates how to compute pairwise concurrence between qubits.
+Concurrence is another metric for quantifying entanglement.
 
 **Conventions**
 
@@ -201,6 +203,8 @@ In a circuit with N qubits, the wires are numbered 0 for the top wire to (N-1) f
 **Limitations**
 
 There is currently no support for controlled swap gates.
+
+The code depends on mathjs, but only for one subroutine which can be commented or removed to eliminate the dependency on mathjs.
 
 **Under Construction**
 
