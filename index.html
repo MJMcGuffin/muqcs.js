@@ -7,6 +7,8 @@ Open a console (in Chrome, this is done by selecting 'Developer Tools'). From th
 Or go to the <a href="https://github.com/MJMcGuffin/muqcs">github repository</a> page.
 </p>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.3.2/math.js"></script>
+
 <script>
 
 // CONVENTIONs
@@ -298,6 +300,15 @@ class CMatrix {
         for ( let r = 0; r < this._rows; ++r ) {
             for ( let c = 0; c < this._cols; ++c ) {
                 M.set( c, r, this.get(r,c) );
+            }
+        }
+        return M;
+    }
+    conjugate() {
+        let M = new CMatrix( this._rows, this._cols );
+        for ( let r = 0; r < this._rows; ++r ) {
+            for ( let c = 0; c < this._cols; ++c ) {
+                M.set( r, c, this.get(r,c).conjugate() );
             }
         }
         return M;
@@ -1251,12 +1262,67 @@ class Sim { // Simulator
                 }
                 let correlation = 4*( p[0][0]*p[1][1] - p[0][1]*p[1][0] );
                 result.set( i, j, correlation );
-                console.log(`${i},${j}: `+StringUtil.numToString(p[0][0])+"+"+StringUtil.numToString(p[0][1])+"+"+StringUtil.numToString(p[1][0])+"+"+StringUtil.numToString(p[1][1])+"="+StringUtil.numToString(p[0][0]+p[0][1]+p[1][0]+p[1][1])+", diff="+StringUtil.numToString(correlation));
+                //console.log(`${i},${j}: `+StringUtil.numToString(p[0][0])+"+"+StringUtil.numToString(p[0][1])+"+"+StringUtil.numToString(p[1][0])+"+"+StringUtil.numToString(p[1][1])+"="+StringUtil.numToString(p[0][0]+p[0][1]+p[1][0]+p[1][1])+", diff="+StringUtil.numToString(correlation));
             }
         }
         console.log("Pairwise correlations appear in upper triangular half:\n" + result.toString());
         return result;
     }
+
+    // The computation here is based on
+    //    equations 1 and 2 in
+    //    https://scholar.google.com/scholar?q=coffmann+kundu+wootters+Distributed+entanglement
+    // which also matches the implementation in
+    //    https://docs.quantum.ibm.com/api/qiskit/0.24/qiskit.quantum_info.concurrence
+    //    https://github.com/Qiskit/qiskit/blob/stable/0.16/qiskit/quantum_info/states/measures.py
+    //       (lines 208-213 at the end of the concurrence() routine)
+    static computePairwiseQubitConcurrences(
+        n, // number of qubits in the circuit
+        densityMatrix // a matrix of size (2**n)x(2**n)
+    ) {
+        let twoN = 2**n;
+        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computePairwiseQubitConcurrences(): density matrix has invalid size" );
+
+        let result = new CMatrix(n,n);
+        let Y_tensor_Y = CMatrix.tensor(Sim.Y,Sim.Y);
+        for ( let i=0; i <= n-2; ++i ) {
+            for ( let j=i+1; j <= n-1; ++j ) {
+
+                let rdm = Sim.computeReducedDensityMatrixForTwoQubits(i,j,n,densityMatrix);
+                //console.log(`reduced density matrix ${i},${j} is \n` + rdm.toString() );
+                let spin_flipped_rdm = CMatrix.naryMult([ Y_tensor_Y, rdm.conjugate(), Y_tensor_Y ]);
+                let m = CMatrix.mult( rdm, spin_flipped_rdm );
+                // To use the mathjs library to find eigenvalues, we must convert the matrix to a format that mathjs understands
+                let m2 = math.zeros(4,4);
+                for ( let row = 0; row < 4; ++row ) {
+                    for ( let col = 0; col < 4; ++col ) {
+                        let entry = m.get(row,col);
+                        m2.set([row,col],math.complex(entry._r,entry._i));
+                    }
+                }
+                //console.log(`matrix ${i},${j} is \n` + m.toString() );
+                //console.log("In mathjs format, the matrix is " + m2.toString());
+                let E = math.eigs(m2,{eigenvectors: false}).values._data;
+                     // .sort((a,b)=>b-a);
+                //console.log(`    eigenvalues are ` + E.toString());
+                let lambda = [];
+                for ( let i = 0; i < E.length; i++) {
+                    lambda[i] = math.re(E[i]); // only keep the real part
+                    Util.assert( lambda[i] > -0.01, "computePairwiseQubitConcurrences(): unexpected negative eigenvalue" );
+                    if ( lambda[i] < 0 ) lambda[i] = 0; // convert slightly negative real numbers to zero
+                    else lambda[i] = Math.sqrt(lambda[i]); // take square roots
+                }
+                let diffOfLambdas = lambda[3] - lambda[2] - lambda[1] - lambda[0];
+                //console.log("    diff of lambdas:" + diffOfLambdas );
+
+                let concurrence = (diffOfLambdas<0) ? 0 : diffOfLambdas;
+                result.set( i, j, concurrence );
+            }
+        }
+        console.log("Pairwise concurrences appear in upper triangular half:\n" + result.toString());
+        return result;
+    }
+
 
     // If the client wants to, they could change the value of usingTextbookConvention
     // and call this again, to initialize things using a different convention.
