@@ -5,7 +5,10 @@ Muqcs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator
 
 The code is contained entirely in a single file, and defines a small class for complex numbers, a class for complex matrices (i.e., matrices storing complex numbers), and a few utility classes.  These classes take up a bit more than a thousand lines of code.  The rest of the code consists of a regression test (in the function performRegressionTest()) followed by some performance tests.  Having a relatively small amount of source code means that the code can be more easily understood by others.
 
-To run the code, load the html file into a browser like Chrome, and then open a console (in Chrome, this is done by selecting 'Developer Tools').  From the console prompt, you can call functions in the code and see output printed to the console.
+Unlike other javascript quantum circuit simulators, Muqcs implements partial trace and can compute
+reduced density matrices, purity, and concurrence, to quantify entanglement between qubits.
+
+To run the code, <a href="https://mjmcguffin.github.io/muqcs.js/">load the html file</a> into a browser like Chrome, and then open a console (in Chrome, this is done by selecting 'Developer Tools').  From the console prompt, you can call functions in the code and see output printed to the console.
 
 **Creating and Manipulating Matrices**
 
