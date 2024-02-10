@@ -1,7 +1,7 @@
 # <a href="https://mjmcguffin.github.io/muqcs.js/">muqcs.js</a>
 
 Muqcs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator
-(named in an allusion to mush, Moser's Useless SHell).  It is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.  It has no graphical front end, does not leverage the GPU for computations, and does not import any special libraries, making it much easier for others to understand the core algorithms.  On many personal computers, it can simulate circuits of 20+ qubits, if no explicit matrices are used as part of the simulation (search for 'second approach' below).
+(named in an allusion to mush, Moser's Useless SHell).  It is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.  It has no graphical front end, does not leverage the GPU for computations, and makes almost no use of external libraries (<a href="https://mathjs.org/">mathjs</a> is used in only one subroutine that is easily excised), making it much easier for others to understand the core algorithms.  On many personal computers, it can simulate circuits of 20+ qubits, if no explicit matrices are used as part of the simulation (search for 'second approach' below for how to do this).
 
 The code is contained entirely in a single file, and defines a small class for complex numbers, a class for complex matrices (i.e., matrices storing complex numbers), and a few utility classes.  These classes take up a bit more than a thousand lines of code.  The rest of the code consists of a regression test (in the function performRegressionTest()) followed by some performance tests.  Having a relatively small amount of source code means that the code can be more easily understood by others.
 
@@ -75,7 +75,7 @@ prints the 4x4 matrix for the CNOT gate in its more usual form:
 
 **Simulating a Quantum Circuit**
 
-To simulate a circuit, there are two approaches.  The first involves storing one explicit matrix for each stage of the circuit.  In a circuit with N qubits, the matrices will have size 2^N x 2^N.  Here we see an example of how to simulate a 3-qubit circuit with this first approach:
+To simulate a circuit, there are two approaches.  The first involves computing one explicit matrix for each stage of the circuit.  In a circuit with N qubits, the matrices will have size 2^N x 2^N.  Here we see an example of how to simulate a 3-qubit circuit with this first approach:
 
     // Simulate a circuit on three qubits
     // equivalent to
@@ -115,7 +115,7 @@ The output is:
     [_,_,_,_,1,_,_,_]   [0       ,0       ,0       ,0       ,0.1-0.4i,0       ,0.9+0.4i,0       ]         [_]   |110>[0.302+0.479i]
     [_,_,_,_,_,1,_,_]   [0       ,0       ,0       ,0       ,0       ,0.1-0.4i,0       ,0.9+0.4i]         [_]   |111>[0.198-0.125i]
 
-A second approach to simulating the same circuit is to not store any explicit matrices of size 2^N x 2^N.  Instead, we only store the state vector of size 2^N x 1, and update it for each stage of the circuit.  The following code does this:
+A second approach to simulating the same circuit is to not compute any explicit matrices of size 2^N x 2^N.  Instead, we only store the state vector of size 2^N x 1, and update it for each stage of the circuit.  The following code does this:
 
     input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
     step1 = Sim.transformStateVectorWith2x2(Sim.H,2,3,input,[]);
@@ -193,7 +193,8 @@ https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B%7B%22id%22%3A%22Rxft%
 
 ![Qubit statistics in Quirk](/doc/qubit-stats-quirk.png)
 
-There is also a subroutine that demonstrates how to compute pairwise concurrence between qubits.
+There is also a subroutine (computePairwiseQubitConcurrences())
+that computes pairwise concurrence between qubits.
 Concurrence is another metric for quantifying entanglement.
 
 **Conventions**
@@ -204,7 +205,9 @@ In a circuit with N qubits, the wires are numbered 0 for the top wire to (N-1) f
 
 There is currently no support for controlled swap gates.
 
-The code depends on mathjs, but only for one subroutine which can be commented or removed to eliminate the dependency on mathjs.
+The code depends on <a href="https://mathjs.org/">mathjs</a>,
+but only for one subroutine (computePairwiseQubitConcurrences())
+which can be commented or removed to eliminate the dependency on mathjs.
 
 **Under Construction**
 
