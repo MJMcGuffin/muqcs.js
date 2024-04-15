@@ -568,6 +568,14 @@ class CMatrix {
         // console.log("totalCost: " + totalCost);
         return list[0];
     }
+    static tensorPower( matrix, exponent ) {
+        Util.assert( exponent>0 && matrix instanceof CMatrix, "CMatrix.naryTensor(): invalid input" );
+        let list = [];
+        for ( let i = 0; i < exponent; ++i ) {
+            list.push( matrix );
+        }
+        return CMatrix.naryTensor( list );
+    }
     // returns true if the given matrices are approximately equal, within the given tolerance
     static approximatelyEqual(a,b,tolerance=precisionForApproximateComparison,printMessage=true) {
         Util.assert(a instanceof CMatrix && b instanceof CMatrix,"CMatrix.approximatelyEqual(): wrong type");
@@ -1269,6 +1277,10 @@ class Sim { // Simulator
         return result;
     }
 
+    // Returns a matrix of size (n)x(n), whose upper triangular half contains concurrence values for pairs of qubits.
+    // Each cell (row=i,column=j) of the matrix contains a real number in [0,1] describing the concurrence between qubits i,j
+    // (where i>j).
+    //
     // The computation here is based on
     //    equations 1 and 2 in
     //    https://scholar.google.com/scholar?q=coffmann+kundu+wootters+Distributed+entanglement
