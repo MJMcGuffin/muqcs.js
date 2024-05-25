@@ -1,12 +1,12 @@
 # <a href="https://mjmcguffin.github.io/muqcs.js/">muqcs.js</a>
 
 Muqcs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator
-(named in an allusion to mush, Moser's Useless SHell).  It is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.  It has no graphical front end, does not leverage the GPU for computations, and makes almost no use of external libraries (<a href="https://mathjs.org/">mathjs</a> is used in only one subroutine that is easily excised), making it much easier for others to understand the core algorithms.  On many personal computers, it can simulate circuits of 20+ qubits, if no explicit matrices are used as part of the simulation (search for 'second approach' below for how to do this).
+(named in allusion to <a href="https://sourceforge.net/projects/mush/">mush</a>, Moser's Useless SHell, written by Derrick Moser (dtmoser)).  Muqcs is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.  It has no graphical front end, does not leverage the GPU for computations, and makes almost no use of external libraries (<a href="https://mathjs.org/">mathjs</a> is used in only one subroutine), making it much easier for others to understand the core algorithms.  On many personal computers, it can simulate circuits of 20+ qubits, if no explicit matrices are used as part of the simulation (search for 'second approach' below for how to do this).  On the other hand, if the user needs to compute explicit matrices (e.g. explicit density matrices to then compute a partial trace, which is done by the code to find things like purity, concurrence, and von Neumann entropy), then the performance limit is hit somewhere closer to 10+ qubits.
 
 The code is contained entirely in a single file, and defines a small class for complex numbers, a class for complex matrices (i.e., matrices storing complex numbers), and a few utility classes.  These classes take up a bit more than a thousand lines of code.  The rest of the code consists of a regression test (in the function performRegressionTest()) followed by some performance tests.  Having a relatively small amount of source code means that the code can be more easily understood by others.
 
 Unlike other javascript quantum circuit simulators, Muqcs implements partial trace and can compute
-reduced density matrices, purity, and concurrence, to quantify entanglement between qubits.
+reduced density matrices, purity, concurrence, and von Neumann entropy, to quantify entanglement between qubits.
 
 To run the code, <a href="https://mjmcguffin.github.io/muqcs.js/">load the html file</a> into a browser like Chrome, and then open a console (in Chrome, this is done by selecting 'Developer Tools').  From the console prompt, you can call functions in the code and see output printed to the console.
 
@@ -78,7 +78,7 @@ prints the 4x4 matrix for the CNOT gate in its more usual form:
 
 **Simulating a Quantum Circuit**
 
-To simulate a circuit, there are two approaches.  The first involves computing one explicit matrix for each stage of the circuit.  In a circuit with N qubits, the matrices will have size 2^N x 2^N.  Here we see an example of how to simulate a 3-qubit circuit with this first approach:
+To simulate a circuit, there are two approaches.  The first involves computing one explicit matrix for each layer (or step or stage) of the circuit.  In a circuit with N qubits, the matrices will have size 2^N x 2^N.  Here we see an example of how to simulate a 3-qubit circuit with this first approach:
 
     // Simulate a circuit on three qubits
     // equivalent to
@@ -105,7 +105,7 @@ To simulate a circuit, there are two approaches.  The first involves computing o
 
 Each matrix takes up O((2^N)^2) space (half a gigabyte for N=13 qubits, assuming 4 bytes per float), and calling CMatrix.mult() on two such matrices would cost O((2^N)^3) time.
 However, the call to naryMult() above causes the matrices to be multiplied right-to-left, because naryMult() checks the sizes of the matrices to optimize the multiplication order, and the right-most matrix passed to naryMult() is just a column vector of size 2^N x 1.  The matrix just before that has size 2^N x 2^N, and multiplying the two together costs O((2^N)^2) and produces another column vector, which gets multiplied by the next matrix before them, etc. 
-Hence, in this first approach, the space and time requirements of each step of the circuit are O((2^N)^2).
+Hence, in this first approach, the space and time requirements of each layer of the circuit are O((2^N)^2).
 Notice in the last call to toString() above, we pass in {binaryPrefixes:true}; this causes bit strings like |000> to be printed in front of the matrix, as a reminder of the association between base states and matrix rows.
 The output is:
 
@@ -118,7 +118,7 @@ The output is:
     [_,_,_,_,1,_,_,_]   [0       ,0       ,0       ,0       ,0.1-0.4i,0       ,0.9+0.4i,0       ]         [_]   |110>[0.302+0.479i]
     [_,_,_,_,_,1,_,_]   [0       ,0       ,0       ,0       ,0       ,0.1-0.4i,0       ,0.9+0.4i]         [_]   |111>[0.198-0.125i]
 
-A second approach to simulating the same circuit is to not compute any explicit matrices of size 2^N x 2^N.  Instead, we only store the state vector of size 2^N x 1, and update it for each stage of the circuit.  The following code does this:
+A second approach to simulating the same circuit is to not compute any explicit matrices of size 2^N x 2^N.  Instead, we only store the state vector of size 2^N x 1, and update it for each layer of the circuit.  The following code does this:
 
     input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
     step1 = Sim.transformStateVectorWith2x2(Sim.H,2,3,input,[]);
@@ -134,7 +134,7 @@ A second approach to simulating the same circuit is to not compute any explicit 
     ));
 
 In this second approach, the space and time requirements of each step of the circuit are O(2^N), so, much better than in the first approach.
-The magic happens in the Sim.transformStateVectorWith2x2() method, which is based on Quirk’s source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js (<a href="https://github.com/Strilanc/Quirk/blob/master/src/math/Matrix.js#L678">link to specific line</a>)
+The magic happens in the Sim.transformStateVectorWith2x2() method, which is inspired by Quirk’s source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js (<a href="https://github.com/Strilanc/Quirk/blob/master/src/math/Matrix.js#L678">link to specific line</a>).  This is essentially the "qubit-wise multiplication" algorithm described in chapter 6 of the book Viamontes, G. F., Markov, I. L., & Hayes, J. P. (2009) "Quantum circuit simulation", although their pseudocode contains errors and does not support control bits.
 
 More explanation and code examples appear in the slides under the doc folder of the repository.
 
@@ -196,9 +196,8 @@ https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B%7B%22id%22%3A%22Rxft%
 
 ![Qubit statistics in Quirk](/doc/qubit-stats-quirk.png)
 
-There is also a subroutine (computePairwiseQubitConcurrences())
-that computes pairwise concurrence between qubits.
-Concurrence is another metric for quantifying entanglement.
+There are also subroutines (computePairwiseQubitConcurrences() and computePairwiseQubitVonNeumannEntropy())
+that compute pairwise concurrence between qubits and the von Neumann entropy of each pair of qubits, to quantify entanglement and mixedness.
 
 **Conventions**
 
@@ -206,11 +205,10 @@ In a circuit with N qubits, the wires are numbered 0 for the top wire to (N-1) f
 
 **Limitations**
 
-There is currently no support for controlled swap gates.
+There is currently no support for measurement gates, nor for iSWAP gates.
 
 The code depends on <a href="https://mathjs.org/">mathjs</a>,
-but only for one subroutine (computePairwiseQubitConcurrences())
-which can be commented or removed to eliminate the dependency on mathjs.
+but only in one subroutine (Sim.eigendecomposition()) which is used to compute concurrence and von Neumann entropy.
 
 **Under Construction**
 
