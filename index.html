@@ -1033,7 +1033,7 @@ class Sim { // Simulator
         Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.computeDensityMatrix(): state vector has invalid size" );
         return CMatrix.mult( stateVector, stateVector.conjugateTranspose() );
     }
-    // Returns a 2x2 matrix
+    // Implements partial trace down to one qubit. Returns a 2x2 matrix
     static computeReducedDensityMatrixForOneQubit(
         i, // the qubit of interest; we trace out the other qubits
         n, // number of qubits in the circuit
@@ -1042,22 +1042,34 @@ class Sim { // Simulator
         let twoN = 2**n;
         Util.assert( 0<=i && i<n, "Sim.computeReducedDensityMatrixForOneQubit(): invalid index" );
         Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computeReducedDensityMatrixForOneQubit(): density matrix has invalid size" );
+
         let rdm = new CMatrix(2,2); // reduced density matrix; a 2x2 matrix
-        let mask = ~(1 << i);
-        for ( let row = 0; row < twoN; ++row ) {
-            let row_bit = ( row >> i ) & 1; // ith bit in row
-            for ( let col = 0; col < twoN; ++col ) {
-                if ( (row & mask) === (col & mask) ) {
-                    let col_bit = ( col >> i ) & 1; // ith bit in col
+
+        let MAX = twoN >> 1;
+        let mask0 = (1<<i)-1; // results in a string of i 1s. E.g., if i=4, this results in 1111 in base 2
+        let mask1 = ((1<<(n-i-1))-1)<<i; // results in a string of (n-i-1) 1s, shifted left by (i)
+        Util.assert( mask1+mask0===MAX-1, "Sim.computeReducedDensityMatrixForOneQubit(): error with masks" );
+        for (
+            let shared_bits = 0; // bits common to input_row and input_col
+            shared_bits < MAX;
+            shared_bits ++
+        ) {
+            let shared_bits_shifted
+                // introduce a space for the ith bit to be added from the output_row or output_col
+                = ((shared_bits & mask1)<<1) | (shared_bits & mask0);
+            for ( let output_row = 0; output_row < 2; output_row ++ ) {
+                let input_row = shared_bits_shifted | (output_row<<i);
+                for ( let output_col = 0; output_col < 2; output_col ++ ) {
+                    let input_col = shared_bits_shifted | (output_col<<i);
                     // The next line, in pseudocode, could be written more simply as
-                    //    rdm[row_bit,col_bit] += densityMatrix[row,col]
-                    rdm.set( row_bit, col_bit, Complex.sum( rdm.get(row_bit,col_bit), densityMatrix.get(row,col) ));
+                    //    rdm[output_row,output_col] += densityMatrix[input_row,input_col]
+                    rdm.set( output_row, output_col, Complex.sum( rdm.get(output_row,output_col), densityMatrix.get(input_row,input_col) ));
                 }
             }
         }
         return rdm;
     }
-    // Returns a 4x4 matrix
+    // Implements partial trace down to two qubits. Returns a 4x4 matrix
     static computeReducedDensityMatrixForTwoQubits(
         i,j, // the two qubits of interest; we trace out the other qubits
         n, // number of qubits in the circuit
@@ -1072,16 +1084,29 @@ class Sim { // Simulator
         let twoN = 2**n;
         Util.assert( 0<=i && i<j && j<n, "Sim.computeReducedDensityMatrixForTwoQubits(): invalid indices" );
         Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computeReducedDensityMatrixForTwoQubits(): density matrix has invalid size" );
+
         let rdm = new CMatrix(4,4); // reduced density matrix; a 4x4 matrix
-        let mask = ~((1 << j) | (1 << i));
-        for ( let row = 0; row < twoN; ++row ) {
-            let row_bits = (( row >> (j-1) ) & 2) | (( row >> i ) & 1); // (jth,ith) bits in row
-            for ( let col = 0; col < twoN; ++col ) {
-                if ( (row & mask) === (col & mask) ) {
-                    let col_bits = (( col >> (j-1) ) & 2) | (( col >> i ) & 1); // (jth,ith) bits in col
+
+        let MAX = twoN >> 2;
+        let mask0 = (1<<i)-1; // results in a string of i 1s. E.g., if i=4, this results in 1111 in base 2
+        let mask1 = ((1<<(j-i-1))-1)<<i; // results in a string of (j-i-1) 1s, shifted left by i.
+        let mask2 = ((1<<(n-j-1))-1)<<(j-1); // results in a string of (n-j-1) 1s, shifted left by (j-1)
+        Util.assert( mask2+mask1+mask0===MAX-1, "Sim.computeReducedDensityMatrixForTwoQubits(): error with masks" );
+        for (
+            let shared_bits = 0; // bits common to input_row and input_col
+            shared_bits < MAX;
+            shared_bits ++
+        ) {
+            let shared_bits_shifted
+                // introduce two spaces for the ith and jth bits to be added from the output_row or output_col
+                = ((shared_bits & mask2)<<2) | ((shared_bits & mask1)<<1) | (shared_bits & mask0);
+            for ( let output_row = 0; output_row < 4; output_row ++ ) {
+                let input_row = shared_bits_shifted | ((output_row&2)<<(j-1)) | ((output_row&1)<<i);
+                for ( let output_col = 0; output_col < 4; output_col ++ ) {
+                    let input_col = shared_bits_shifted | ((output_col&2)<<(j-1)) | ((output_col&1)<<i);
                     // The next line, in pseudocode, could be written more simply as
-                    //    rdm[row_bits,col_bits] += densityMatrix[row,col]
-                    rdm.set( row_bits, col_bits, Complex.sum( rdm.get(row_bits,col_bits), densityMatrix.get(row,col) ));
+                    //    rdm[output_row,output_col] += densityMatrix[input_row,input_col]
+                    rdm.set( output_row, output_col, Complex.sum( rdm.get(output_row,output_col), densityMatrix.get(input_row,input_col) ));
                 }
             }
         }
@@ -1323,8 +1348,47 @@ class Sim { // Simulator
                 //console.log(`${i},${j}: `+StringUtil.numToString(p[0][0])+"+"+StringUtil.numToString(p[0][1])+"+"+StringUtil.numToString(p[1][0])+"+"+StringUtil.numToString(p[1][1])+"="+StringUtil.numToString(p[0][0]+p[0][1]+p[1][0]+p[1][1])+", diff="+StringUtil.numToString(correlation));
             }
         }
-        console.log("Pairwise correlations appear in upper triangular half:\n" + result.toString());
+        //console.log("Pairwise correlations appear in upper triangular half:\n" + result.toString());
         return result;
+    }
+
+    // Attempts to perform an eigendecomposition of the given complex square matrix,
+    // assuming that the resulting eigenvalues should all be real nonnegative, and returns these in an array.
+    // If the eigendecomposition fails, this returns null.
+    static eigendecomposition( matrix ) {
+        Util.assert( matrix._rows===matrix._cols && matrix._rows > 1, "Sim.eigendecomposition(): matrix has invalid size" );
+        let N = matrix._rows;
+
+        // To use the mathjs library to find eigenvalues, we must convert the matrix to a format that mathjs understands
+        let m2 = math.zeros(N,N);
+        for ( let row = 0; row < N; ++row ) {
+            for ( let col = 0; col < N; ++col ) {
+                let entry = matrix.get(row,col);
+                m2.set( [row,col], math.complex(entry._r,entry._i) );
+            }
+        }
+        //console.log(`matrix ${i},${j} is \n` + m.toString() );
+        //console.log("In mathjs format, the matrix is " + m2.toString());
+        let E;
+        try {
+            // I tried increasing precision to as much as 0.01, but this still sometimes fails.
+            E = math.eigs(m2,{eigenvectors: false, precision: 0.0001}).values._data;
+                // .sort((a,b)=>b-a);
+            //console.log(`Eigenvalues are ` + E.toString());
+        } catch (error) {
+            console.log("Sim.eigendecomposition() failed: ", error);
+            console.log(`    Matrix was \n` + matrix.toString() );
+            console.log("    In mathjs format, the matrix was " + m2.toString());
+            console.log("    Error.values:" + error.values);
+            return null;
+        }
+        let lambda = [];
+        for ( let i = 0; i < E.length; i++) {
+            lambda[i] = math.re(E[i]); // only keep the real part
+            Util.assert( lambda[i] > -0.01, "Sim.eigendecomposition(): unexpected negative eigenvalue" );
+            if ( lambda[i] < 0 ) lambda[i] = 0; // convert slightly negative real numbers to zero
+        }
+        return lambda;
     }
 
     // Returns a matrix of size (n)x(n), whose upper triangular half contains concurrence values for pairs of qubits.
@@ -1354,26 +1418,20 @@ class Sim { // Simulator
                 //console.log(`reduced density matrix ${i},${j} is \n` + rdm.toString() );
                 let spin_flipped_rdm = CMatrix.naryMult([ Y_tensor_Y, rdm.conjugate(), Y_tensor_Y ]);
                 let m = CMatrix.mult( rdm, spin_flipped_rdm );
-                // To use the mathjs library to find eigenvalues, we must convert the matrix to a format that mathjs understands
-                let m2 = math.zeros(4,4);
-                for ( let row = 0; row < 4; ++row ) {
-                    for ( let col = 0; col < 4; ++col ) {
-                        let entry = m.get(row,col);
-                        m2.set([row,col],math.complex(entry._r,entry._i));
-                    }
+
+                const ERROR_VALUE = -0.1;
+                let lambda = Sim.eigendecomposition( m );
+                if ( lambda === null ) {
+                    // the eigendecomposition failed
+                    result.set( i, j, ERROR_VALUE );
+                    continue;
                 }
-                //console.log(`matrix ${i},${j} is \n` + m.toString() );
-                //console.log("In mathjs format, the matrix is " + m2.toString());
-                let E = math.eigs(m2,{eigenvectors: false}).values._data;
-                     // .sort((a,b)=>b-a);
-                //console.log(`    eigenvalues are ` + E.toString());
-                let lambda = [];
-                for ( let i = 0; i < E.length; i++) {
-                    lambda[i] = math.re(E[i]); // only keep the real part
-                    Util.assert( lambda[i] > -0.01, "computePairwiseQubitConcurrences(): unexpected negative eigenvalue" );
-                    if ( lambda[i] < 0 ) lambda[i] = 0; // convert slightly negative real numbers to zero
-                    else lambda[i] = Math.sqrt(lambda[i]); // take square roots
+
+                // take square roots
+                for ( let i = 0; i < lambda.length; i++) {
+                    lambda[i] = Math.sqrt( lambda[i] );
                 }
+
                 let diffOfLambdas = lambda[3] - lambda[2] - lambda[1] - lambda[0];
                 //console.log("    diff of lambdas:" + diffOfLambdas );
 
@@ -1381,10 +1439,76 @@ class Sim { // Simulator
                 result.set( i, j, concurrence );
             }
         }
-        console.log("Pairwise concurrences appear in upper triangular half:\n" + result.toString());
+        //console.log("Pairwise concurrences appear in upper triangular half:\n" + result.toString());
         return result;
     }
 
+    // Returns a matrix of size (n)x(n), whose upper triangular half contains purity values for pairs of qubits.
+    // Each cell (row=i,column=j) of the matrix contains a real number in [0.25,1] describing the purity for qubits i,j
+    // (where i>j).
+    // (In general, when considering n qubits, the purity computed from their 2^n x 2^n reduced density matrix
+    // is in the range [1/2^n,1])
+    //
+    static computePairwiseQubitPurity(
+        n, // number of qubits in the circuit
+        densityMatrix // a matrix of size (2**n)x(2**n)
+    ) {
+        let twoN = 2**n;
+        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computePairwiseQubitPurity(): density matrix has invalid size" );
+
+        let result = new CMatrix(n,n);
+        for ( let i=0; i <= n-2; ++i ) {
+            for ( let j=i+1; j <= n-1; ++j ) {
+
+                let rdm = Sim.computeReducedDensityMatrixForTwoQubits(i,j,n,densityMatrix);
+                //console.log(`reduced density matrix ${i},${j} is \n` + rdm.toString() );
+                result.set( i, j, (CMatrix.mult(rdm,rdm)).trace() );
+            }
+        }
+        console.log("Pairwise purities appear in upper triangular half:\n" + result.toString());
+        return result;
+    }
+
+    // Returns a matrix of size (n)x(n), whose upper triangular half contains entropy values for pairs of qubits.
+    // Each cell (row=i,column=j) of the matrix contains a real number in [0,2] describing the entropy for qubits i,j
+    // (where i>j).
+    // (In general, when considering n qubits, the von Neumann entropy computed from their 2^n x 2^n reduced density matrix
+    // is in the range [0,n])
+    //
+    static computePairwiseQubitVonNeumannEntropy(
+        n, // number of qubits in the circuit
+        densityMatrix // a matrix of size (2**n)x(2**n)
+    ) {
+        let twoN = 2**n;
+        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computePairwiseQubitVonNeumannEntropy(): density matrix has invalid size" );
+
+        let result = new CMatrix(n,n);
+        for ( let i=0; i <= n-2; ++i ) {
+            for ( let j=i+1; j <= n-1; ++j ) {
+
+                let rdm = Sim.computeReducedDensityMatrixForTwoQubits(i,j,n,densityMatrix);
+                //console.log(`reduced density matrix ${i},${j} is \n` + rdm.toString() );
+
+                const ERROR_VALUE = -0.1;
+                let lambda = Sim.eigendecomposition( rdm );
+                if ( lambda === null ) {
+                    // the eigendecomposition failed
+                    result.set( i, j, ERROR_VALUE );
+                    continue;
+                }
+
+                let entropy = 0;
+                for ( let i = 0; i < lambda.length; ++i ) {
+                    if ( lambda[i] > 0 )
+                        entropy -= lambda[i] * Math.log2( lambda[i] );
+                }
+                //console.log(`  entropy is ${entropy}`);
+                result.set( i, j, entropy );
+            }
+        }
+        console.log("Pairwise Von Neumann entropies appear in upper triangular half:\n" + result.toString());
+        return result;
+    }
 
     // If the client wants to, they could change the value of usingTextbookConvention
     // and call this again, to initialize things using a different convention.
