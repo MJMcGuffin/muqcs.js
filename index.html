@@ -130,6 +130,11 @@ class StringUtil {
             r += s;
         return r;
     }
+    // converts an integer to a binary string, padding with zeros at the front
+    static intToBinaryString( i, desiredWidth ) {
+        let binaryString = i.toString(2/*base 2 for binary*/);
+        return StringUtil.repeatString('0',desiredWidth-binaryString.length) + binaryString; // pad with '0's
+    }
     // returns number of times the character c occurs in string s
     static countInString(s,c) {
         let r = 0;
@@ -355,8 +360,7 @@ class CMatrix {
         if ( binaryPrefixes ) {
             let targetWidth = Math.ceil( Math.log2(this._rows) );
             for ( let r = 0; r < this._rows; ++r ) {
-                let binaryString = r.toString(2/*base 2 for binary*/);
-                binaryString = StringUtil.repeatString('0',targetWidth-binaryString.length) + binaryString; // pad with '0's
+                let binaryString = StringUtil.intToBinaryString( r, targetWidth );
                 if ( usingTextbookConvention )
                     binaryString = '|' + StringUtil.reverseString( binaryString ) + '>';
                 else
@@ -861,12 +865,46 @@ class Sim { // Simulator
 
         return m3;
     }
+
     // Returns a new state vector.
     // Avoids computing an explicit matrix of size (2**n)x(2**n), saving a lot of memory and time.
-    // Adapted from Quirk's source code, specifically
-    //     https://github.com/Strilanc/Quirk/ ,
-    //     src/math/Matrix.js,
-    //     applyToStateVectorAtQubitWithControls()
+    //
+    // Imagine the state vector partitioned into contiguous blocks of equal size,
+    // with each block partitioned into two half blocks.
+    // The below code steps through the blocks, and within each block, for each i,
+    // it will take the ith amplitude of the first half block and the ith amplitude
+    // of the second half block, store those two amplitudes in a temporary vector
+    // (this is the "collect" step, since it collects the amplitudes into the temporary vector),
+    // apply the 2x2 matrix to that temporary vector, and store the resulting amplitudes
+    // back in the ith positions of the half blocks (the "scatter" step).
+    //
+    // The below code is similar to the code in Quirk ( https://github.com/Strilanc/Quirk/ ,
+    // src/math/Matrix.js , applyToStateVectorAtQubitWithControls() )
+    // and also similar to the pseudocode in Figure 6.1 of the book by Viamontes et al.
+    // (Viamontes, G. F., Markov, I. L., & Hayes, J. P. (2009) "Quantum circuit simulation")
+    // Viamontes et al. call this algorithm "qubit-wise multiplication".
+    //
+    // To compare with Quirk's version of the code, it helps to know that Quirk's source code
+    // calls the tempVector a 'chunk', and it uses different names for several variables,
+    // listed below.  Also, our version has indices and sizes of things in complex numbers
+    // (i.e., in amplitudes), whereas Quirk's corresponding quantities are in floats and
+    // are therefore doubled.
+    //
+    //     Some quantities in our code, and the corresponding quantities in Quirk's code:
+    //         sizeOfHalfBlock (in complex numbers) is (strideLength (in floats))/2
+    //         sizeOfBlock (in complex numbers) is (strideChunkSize (in floats))/2
+    //         indexOfStartOfBlock (in complex numbers) is (strideChunkStart (in floats))/2
+    //         offsetWithinBlock (in complex numbers) is (strideOffset (in floats))/2
+    //
+    // Viamontes et al., Figure 6.1, appears to be the same algorithm. The inner "for" loop
+    // in it performs the "collect" step, and the line of code immediately following,
+    // which uses slice notation (res[a:...:gap]), performs the "scatter" step.
+    // The 'gap' variable in Viamontes et al.'s version is sizeOfHalfBlock in our code.
+    // However, Viamontes et al., Figure 6.1 also contains errors: it mentions a
+    // "group_factor" that is undefined, and contains a stray closing brace.
+    // There are other things about it that are confusing which I haven't
+    // fully analyzed.  Finally, Viamontes et al.'s version has no support for control bits.
+    //
     static transformStateVectorWith2x2(
         m, // a 2x2 matrix
         i, // index of wire on which to apply m
@@ -892,44 +930,40 @@ class Sim { // Simulator
 
         if ( usingTextbookConvention )
             i = n-1 - i;
-        let chunk = new CMatrix(2,1);
-        let strideLength = 2 << i; // could be 2, 4, 8 ...
-        let strideChunkSize = strideLength * 2; // could be 4, 8, 16 ...
+        let tempVector = new CMatrix(2,1);
+        let sizeOfHalfBlock = 1 << i; // could be 1, 2, 4, ...
+        let sizeOfBlock = sizeOfHalfBlock * 2; // could be 2, 4, 8 ...
         let result = stateVector.copy();
-        for (let strideChunkStart = 0; strideChunkStart < 2*stateVector._rows; strideChunkStart += strideChunkSize) {
-            for (let strideOffset = 0; strideOffset < strideLength; strideOffset += 2) {
-                let stateIndex = (strideChunkStart | strideOffset) >> 1;
-                if ( (inclusionMask & stateIndex) !== desiredValueMask )
+        for ( let indexOfStartOfBlock = 0; indexOfStartOfBlock < stateVector._rows; indexOfStartOfBlock += sizeOfBlock ) {
+            for ( let offsetWithinBlock = 0; offsetWithinBlock < sizeOfHalfBlock; offsetWithinBlock ++ ) {
+                Util.assert( indexOfStartOfBlock | offsetWithinBlock === indexOfStartOfBlock + offsetWithinBlock, "Sim.transformStateVectorWith2x2(): unexpected numbers" );
+                let stateIndex1 = indexOfStartOfBlock | offsetWithinBlock;
+                if ( (stateIndex1 & inclusionMask) !== desiredValueMask )
                     continue;
 
-                // Collect inputs into a small contiguous vector.
-                let k = strideChunkStart + strideOffset;
-                chunk._m[0] = stateVector._m[k];   // real component
-                chunk._m[1] = stateVector._m[k+1]; // imaginary component
-                k += strideLength;
-                chunk._m[2] = stateVector._m[k];   // real component
-                chunk._m[3] = stateVector._m[k+1]; // imaginary component
+                let stateIndex2 = stateIndex1 + sizeOfHalfBlock;
 
-                let transformedChunk = CMatrix.mult( m, chunk );
+                // Collect inputs into a small contiguous vector.
+                tempVector.set( 0, 0, stateVector.get( stateIndex1, 0 ) );
+                tempVector.set( 1, 0, stateVector.get( stateIndex2, 0 ) );
+
+                let transformedVector = CMatrix.mult( m, tempVector );
 
                 // Scatter outputs.
-                k = strideChunkStart + strideOffset;
-                result._m[k] = transformedChunk._m[0];
-                result._m[k+1] = transformedChunk._m[1];
-                k += strideLength;
-                result._m[k] = transformedChunk._m[2];
-                result._m[k+1] = transformedChunk._m[3];
+                result.set( stateIndex1, 0, transformedVector.get( 0, 0 ) );
+                result.set( stateIndex2, 0, transformedVector.get( 1, 0 ) );
             }
         }
         return result;
     }
     // Returns a new state vector.
     // Avoids computing an explicit swap matrix of size (2**n)x(2**n), saving a lot of memory and time.
-    static transformStateVectorWithSwap( // TODO this needs more testing
+    static transformStateVectorWithSwap(
         i, // index of 1st wire on which to apply the swap
         j, // index of 2nd wire on which to apply the swap
         n, // number of qubits in the circuit
-        stateVector // a matrix of size (2**n)x1, i.e. a column vector
+        stateVector, // a matrix of size (2**n)x1, i.e. a column vector
+        listOfControlBits = [] // a list of pairs of the form [wire_index, flag] where 0<=wire_index<n and flag is true for a control bit and false for an anti-control bit
     ) {
         Util.assert( 0<=i && i<n && 0<=j && j<n, "Sim.transformStateVectorWithSwap(): invalid indices" );
         Util.assert( i!=j, "Sim.transformStateVectorWithSwap(): indices are unexpectedly equal" );
@@ -939,6 +973,19 @@ class Sim { // Simulator
         if ( i === j ) {
             return result;
         }
+
+        let inclusionMask = 0;
+        let desiredValueMask = 0;
+        for ( let iter of listOfControlBits ) {
+            let [wireIndex,flag] = iter;
+            if ( usingTextbookConvention )
+                wireIndex = n-1 - wireIndex;
+            let bit = 1 << wireIndex;
+            inclusionMask |= bit;
+            if ( flag )
+                desiredValueMask |= bit;
+        }
+
         if ( usingTextbookConvention ) {
             i = n-1 - i;
             j = n-1 - j;
@@ -956,6 +1003,9 @@ class Sim { // Simulator
         let antimask = ~( mask_i | mask_j );
 
         for ( let r1 = 0; r1 < numStates; ++r1 ) {
+            if ( (r1 & inclusionMask) !== desiredValueMask )
+                continue;
+
             let r2 = r1;
 
             let ithBit = (r2 >> i) & 1;
