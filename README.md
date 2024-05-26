@@ -1,8 +1,8 @@
 # <a href="https://mjmcguffin.github.io/muqcs.js/">muqcs.js</a>
 
-Muqcs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator.  It is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.  It has no graphical front end, does not leverage the GPU for computations, and makes almost no use of external libraries (<a href="https://mathjs.org/">mathjs</a> is used in only one subroutine), making it much easier for others to understand the core algorithms.  On many personal computers, it can simulate circuits of 20+ qubits, if no explicit matrices are used as part of the simulation (search for 'second approach' below for how to do this).  On the other hand, if the user needs to compute explicit matrices (e.g. explicit density matrices to then compute a partial trace, which is done by the code to find things like purity, concurrence, and von Neumann entropy), then the performance limit is hit somewhere closer to 10+ qubits.
+Muqcs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator.  It is written in JavaScript, and allows one to simulate circuits programmatically or from a command line.  It has no graphical front end, does not leverage the GPU for computations, and makes almost no use of external libraries (<a href="https://mathjs.org/">mathjs</a> is used in only one subroutine), making it easier for others to understand the core algorithms.  On many personal computers, it can simulate circuits of 20+ qubits, if no explicit matrices are used as part of the simulation (search for 'second approach' below for how to do this).  On the other hand, if the user needs to compute explicit matrices (such as explicit density matrices to compute a partial trace, which is used by the code to find things like purity, concurrence, and von Neumann entropy), then a performance limit is hit somewhere around 10+ qubits.
 
-The code is contained entirely in a single file, and defines a small class for complex numbers, a class for complex matrices (i.e., matrices storing complex numbers), and a few utility classes.  These classes take up a bit more than a thousand lines of code.  The rest of the code consists of a regression test (in the function performRegressionTest()) followed by some performance tests.  Having a relatively small amount of source code means that the code can be more easily understood by others.
+The code is contained entirely in a single file, and defines a small class for complex numbers, a class for complex matrices (i.e., matrices storing complex numbers), and a few utility classes like Sim (for Simulator).  These classes take up about 1600 lines of code.  The rest of the code consists of a regression test (in the function performRegressionTest()) followed by some performance tests.  Having a relatively small amount of source code means that the code can be more easily studied and understood by others.
 
 Unlike other javascript quantum circuit simulators, Muqcs implements partial trace and can compute
 reduced density matrices, purity, concurrence, and von Neumann entropy, to quantify entanglement between qubits.
@@ -146,7 +146,7 @@ In addition, muqcs can compute the (2^N x 2^N) density matrix for a give state v
 and also compute the (2x2) reduced density matrix (using the partial trace) for each qubit, from which we can compute
 the phase, Bloch sphere coordinates, and purity (also called 'reduced purity' or 'purity of reduced state') for each qubit.
 The Bloch sphere coordinates are a way to describe the qubit's 'local state'.
-Purity is a quantity varying from 0.5 to 1.0, indicating how entangled the qubit is with the rest of the system:
+The purity for a single qubit varies from 0.5 to 1.0 and indicates how entangled the qubit is with the rest of the system:
 0.5 means maximally entangled, 1.0 means not entangled, and an intermediate value means partially mixed.
 Here is an example computing these statistics with muqcs:
 
