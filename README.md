@@ -237,6 +237,8 @@ Some predefined basis vectors:
 |  $\langle -i \|$  | `Sim.braMinusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 i ]</pre> | |
 |  $\|-i\rangle$  | `Sim.ketMinusI` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -i ]</pre> | |
 
+Consider a circuit of $N$ qubits where the overall state of the circuit is pure, i.e., none of the qubits are entangled with the environment.  The state of the $N$ qubits can be described using a $2^N \times 1$ (column) state vector $\| \phi \rangle$, or using a $2^N \times 2^N$ density matrix $D = \| \psi \rangle \langle \psi \|$.  To better understand some subset of $M$ qubits within the circuit, we can compute a partial trace of $D$ to "trace out" or "trace over" the other qubits, yielding a $2^M \times 2^M$ reduced density matrix $R$.  The purity of $R$ is given by the trace of $R^2$, and one minus that purity gives the linear entropy, which is an approximation of the von Neumann entropy (https://www.quantiki.org/wiki/linear-entropy) of the subset of $M$ qubits.  Purity ranges from $1/(2^M)$ to 1.0, linear entropy ranges from 0.0 to $1-1/(2^M)$, and von Neumann entropy ranges from 0.0 to M.  Entropy is a measure of the mixedness (the opposite of purity) of the subset of qubits, and mixedness is, roughly speaking, how entangled the subset of qubits is with other qubits outside the subset.  Concurrence is a measure of how much the qubits are entangled with other qubits within the same subset.  There's a nice table at https://physics.stackexchange.com/questions/643578/what-are-the-relations-between-mixed-pure-and-separable-entangled-states showing types of states, by crossing {pure,mixed} $\times$ {product, separable, entangled}.
+
 A matrix $M$ is *unitary* if its inverse is equal to its conjugate transpose, i.e., $M^{-1} = M^{*}$ or $M^{-1} = M^{\dagger}$
 
 A matrix $M$ is *hermitian* if it is equal to its own conjugate transpose, i.e., $M = M^{*}$
@@ -245,6 +247,8 @@ A matrix $M$ is *involutory* if it is equal to its own inverse, $M = M^{-1}$
 
 Any two of the above properties implies the third.  All valid quantum gates are described by matrices that are unitary.
 Some of them (like I, X, Y, Z, H, CX, SWAP) are described by matrices that are additionally hermitian and involutory.
+
+A density matrix is always hermitian.
 
 Circuits consisting only of Clifford gates (which includes I, H, X, Y, Z, SX, SY, SZ, CX, SWAP) can be simulated in polynomial time on a classical computer, by the Gottesman-Knill theorem.  Thus, mere superposition (which can be created with H gates) and entanglement (CX gates) are not sufficient to explain the speedup offered by quantum computers.
 
