@@ -197,7 +197,7 @@ https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B%7B%22id%22%3A%22Rxft%
 
 ![Qubit statistics in Quirk](/doc/qubit-stats-quirk.png)
 
-There are also subroutines (computePairwiseQubitConcurrences() and computePairwiseQubitVonNeumannEntropy())
+There are also subroutines (Sim.computePairwiseQubitConcurrences() and Sim.computePairwiseQubitVonNeumannEntropy())
 that compute pairwise concurrence between qubits and the von Neumann entropy of each pair of qubits, to quantify entanglement and mixedness.
 
 **Conventions**
