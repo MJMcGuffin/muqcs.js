@@ -7,7 +7,7 @@ Open a console (in Chrome, this is done by selecting 'Developer Tools'). From th
 Or go to the <a href="https://github.com/MJMcGuffin/muqcs">github repository</a> page.
 </p>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.3.2/math.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/13.0.2/math.js"></script>
 
 <script>
 
@@ -1402,6 +1402,8 @@ class Sim { // Simulator
     //    https://docs.quantum.ibm.com/api/qiskit/0.24/qiskit.quantum_info.concurrence
     //    https://github.com/Qiskit/qiskit/blob/stable/0.16/qiskit/quantum_info/states/measures.py
     //       (lines 208-213 at the end of the concurrence() routine)
+    // More discussion is at
+    //    https://physics.stackexchange.com/questions/46443/what-is-the-motivation-for-the-definition-of-concurrence-in-quantum-information
     static computePairwiseQubitConcurrences(
         n, // number of qubits in the circuit
         densityMatrix // a matrix of size (2**n)x(2**n)
@@ -1474,6 +1476,9 @@ class Sim { // Simulator
     // (where i>j).
     // (In general, when considering n qubits, the von Neumann entropy computed from their 2^n x 2^n reduced density matrix
     // is in the range [0,n])
+    //
+    // See
+    //     https://quantumcomputing.stackexchange.com/questions/28708/how-is-the-von-neumann-entropy-of-a-state-defined-from-its-eigendecomposition
     //
     static computePairwiseQubitVonNeumannEntropy(
         n, // number of qubits in the circuit
