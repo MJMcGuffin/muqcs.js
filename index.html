@@ -1161,10 +1161,26 @@ class Sim { // Simulator
         let psi_amplitude_0 = new Complex( cosine_theta_over_2, 0 );
         let psi_amplitude_1 = new Complex( Math.cos(phase)*sine_theta_over_2, Math.sin(phase)*sine_theta_over_2 );
 
+        let vonNeumannEntropy = 0; // will be in the range [0,1]
+        let lambda = Sim.eigendecomposition( dm );
+        if ( lambda === null ) {
+            // the eigendecomposition failed
+            const ERROR_VALUE = -0.1;
+            vonNeumannEntropy = ERROR_VALUE;
+        }
+        else {
+            for ( let i = 0; i < lambda.length; ++i ) {
+                if ( lambda[i] > 0 )
+                    vonNeumannEntropy -= lambda[i] * Math.log2( lambda[i] );
+            }
+        }
+
         return {
             x:x, y:y, z:z, radius:radius, phase:phase, theta:theta,
             probabilityOfOne:probabilityOfOne,
             purity:purity,
+            linearEntropy:(1-purity._r),
+            vonNeumannEntropy:vonNeumannEntropy,
             psi_amplitude_0:psi_amplitude_0, psi_amplitude_1:psi_amplitude_1
         };
     }
@@ -1421,10 +1437,10 @@ class Sim { // Simulator
                 let spin_flipped_rdm = CMatrix.naryMult([ Y_tensor_Y, rdm.conjugate(), Y_tensor_Y ]);
                 let m = CMatrix.mult( rdm, spin_flipped_rdm );
 
-                const ERROR_VALUE = -0.1;
                 let lambda = Sim.eigendecomposition( m );
                 if ( lambda === null ) {
                     // the eigendecomposition failed
+                    const ERROR_VALUE = -0.1;
                     result.set( i, j, ERROR_VALUE );
                     continue;
                 }
@@ -1467,7 +1483,7 @@ class Sim { // Simulator
                 result.set( i, j, (CMatrix.mult(rdm,rdm)).trace() );
             }
         }
-        console.log("Pairwise purities appear in upper triangular half:\n" + result.toString());
+        //console.log("Pairwise purities appear in upper triangular half:\n" + result.toString());
         return result;
     }
 
@@ -1494,10 +1510,10 @@ class Sim { // Simulator
                 let rdm = Sim.computeReducedDensityMatrixForTwoQubits(i,j,n,densityMatrix);
                 //console.log(`reduced density matrix ${i},${j} is \n` + rdm.toString() );
 
-                const ERROR_VALUE = -0.1;
                 let lambda = Sim.eigendecomposition( rdm );
                 if ( lambda === null ) {
                     // the eigendecomposition failed
+                    const ERROR_VALUE = -0.1;
                     result.set( i, j, ERROR_VALUE );
                     continue;
                 }
@@ -1511,7 +1527,7 @@ class Sim { // Simulator
                 result.set( i, j, entropy );
             }
         }
-        console.log("Pairwise Von Neumann entropies appear in upper triangular half:\n" + result.toString());
+        //console.log("Pairwise Von Neumann entropies appear in upper triangular half:\n" + result.toString());
         return result;
     }
 
