@@ -278,3 +278,118 @@ Matrices encoding the effect of a quantum gate:
 |                | `Sim.SWAP_2`      | 2 | 4x4              |  |
 |                | `Sim.SWAP(i,j,n)` | 2 | $2^n \times 2^n$ |  |
 | CNOT, CX, XOR  | `Sim.CX`          | 2 | 4x4              |  |
+
+zero, 0, `Sim.ZERO`
+```math
+\begin{bmatrix} 0 & 0 \\ 0 & 0 \end{bmatrix}
+```
+
+identity, I, `Sim.I`
+```math
+\begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
+```
+
+Hadamard, H, `Sim.H`
+```math
+\frac{1}{\sqrt{2}} \begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}
+```
+
+Pauli X, NOT, `Sim.X`
+```math
+\begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}
+```
+
+Pauli Y, `Sim.Y`
+```math
+\begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix}
+```
+
+Pauli Z, Phase($\pi$), `Sim.Z`, `Phase(180)`
+```math
+\begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix}
+```
+
+$\sqrt{X}$, SX, $\sqrt{NOT}$, V, `Sim.SX`
+```math
+\frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i \end{bmatrix}
+```
+
+$\sqrt{Y}$, SY, `Sim.SY`
+```math
+\frac{1}{2} \begin{bmatrix} 1+i & -1-i \\ 1+i & 1+i \end{bmatrix}
+```
+
+$\sqrt{Z}$, SZ, Phase($\pi/2$), S, `Sim.SZ`, `Phase(90)`
+```math
+\begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}
+```
+
+$\sqrt[4]{X}$, `Sim.SSX`
+```math
+\begin{bmatrix} (2+\sqrt{2})/4 + i/(2 \sqrt{2}) & (2-\sqrt{2})/4 - i/(2 \sqrt{2}) \\ (2-\sqrt{2})/4 - i/(2 \sqrt{2}) & (2+\sqrt{2})/4 + i/(2 \sqrt{2}) \end{bmatrix}
+```
+
+$\sqrt[4]{Y}$, `Sim.SSY`
+```math
+\begin{bmatrix} (2+\sqrt{2})/4 + i/(2 \sqrt{2}) & -1/(2 \sqrt{2})-i (2-\sqrt{2})/4 \\ 1/(2 \sqrt{2})+i (2-\sqrt{2})/4 & (2+\sqrt{2})/4 + i/(2 \sqrt{2}) \end{bmatrix}
+```
+
+$\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$, `Sim.SSZ`, `Phase(45)`
+```math
+\begin{bmatrix} 1 & 0 \\ 0 & e^{i \pi/4} \end{bmatrix}
+```
+
+global phase shift, `Sim.GlobalPhase (angleInDegrees)`
+```math
+e^{i \theta} \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
+```
+
+phase shift, `Sim.Phase (angleInDegrees)`
+```math
+\begin{bmatrix} 1 & 0 \\ 0 & e^{i \theta} \end{bmatrix}
+```
+
+$R_x$, `Sim.RX (angleInDegrees)`
+```math
+\begin{bmatrix} \cos(\theta/2) & -i \sin(\theta/2) \\ -i \sin(\theta/2) & \cos(\theta/2) \end{bmatrix}
+```
+
+$R_y$, `Sim.RY (angleInDegrees)`
+```math
+\begin{bmatrix} \cos(\theta/2) & -\sin(\theta/2) \\ \sin(\theta/2) & \cos(\theta/2) \end{bmatrix}
+```
+
+$R_z$, `Sim.RZ (angleInDegrees)`
+```math
+\begin{bmatrix} e^{-i \theta/2} & 0 \\ 0 & e^{i \theta/2} \end{bmatrix}
+```
+
+`Sim.RotFreeAxis (ax,ay,az)`
+<p align="center">
+  (see definition in source code)
+</p>
+
+`Sim.RotFreeAxisAngle (ax,ay,az, angleInDegrees)`
+<p align="center">
+  (see definition in source code)
+</p>
+
+$X^k = R_x(k \pi) GlobalPhase(k \pi/2)$
+```math
+\frac{1}{2} \begin{bmatrix} 1+e^{i k \pi} & 1-e^{i k \pi} \\ 1-e^{i k \pi} & 1+e^{i k \pi} \end{bmatrix}
+= \begin{bmatrix} \cos(k \pi/2) & -i \sin(k \pi/2) \\ -i \sin(k \pi/2) & \cos(k \pi/2) \end{bmatrix}
+e^{i k \pi/2}
+```
+
+$Y^k = R_y(k \pi) GlobalPhase(k \pi/2)$
+```math
+\frac{1}{2} \begin{bmatrix} 1+e^{i k \pi} & i(e^{i k \pi}-1) \\ i(1-e^{i k \pi}) & 1+e^{i k \pi} \end{bmatrix} = \begin{bmatrix} \cos(k \pi/2) & -\sin(k \pi/2) \\ \sin(k \pi/2) & \cos(k \pi/2) \end{bmatrix} e^{i k \pi/2}
+```
+
+$Z^k = R_z(k \pi) GlobalPhase(k \pi/2) = Phase(k \pi)$
+```math
+\begin{bmatrix} 1 & 0 \\ 0 & e^{i k \pi} \end{bmatrix} = \begin{bmatrix} e^{-i k \pi/2} & 0 \\ 0 & e^{i k \pi/2} \end{bmatrix} e^{i k \pi/2}
+```
+
+
+
