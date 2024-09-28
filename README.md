@@ -326,12 +326,14 @@ $\sqrt{Z}$, SZ, Phase($\pi/2$), S, `Sim.SZ`, `Phase(90)`
 
 $\sqrt[4]{X}$, `Sim.SSX`
 ```math
-\begin{bmatrix} (2+\sqrt{2})/4 + i/(2 \sqrt{2}) & (2-\sqrt{2})/4 - i/(2 \sqrt{2}) \\ (2-\sqrt{2})/4 - i/(2 \sqrt{2}) & (2+\sqrt{2})/4 + i/(2 \sqrt{2}) \end{bmatrix}
+\frac{1}{2} \begin{bmatrix} 1+e^{i \pi/4} & 1-e^{i \pi/4} \\ 1-e^{i \pi/4} & 1+e^{i \pi/4} \end{bmatrix}
+= \begin{bmatrix} (2+\sqrt{2})/4 + i/(2 \sqrt{2}) & (2-\sqrt{2})/4 - i/(2 \sqrt{2}) \\ (2-\sqrt{2})/4 - i/(2 \sqrt{2}) & (2+\sqrt{2})/4 + i/(2 \sqrt{2}) \end{bmatrix}
 ```
 
 $\sqrt[4]{Y}$, `Sim.SSY`
 ```math
-\begin{bmatrix} (2+\sqrt{2})/4 + i/(2 \sqrt{2}) & -1/(2 \sqrt{2})-i (2-\sqrt{2})/4 \\ 1/(2 \sqrt{2})+i (2-\sqrt{2})/4 & (2+\sqrt{2})/4 + i/(2 \sqrt{2}) \end{bmatrix}
+\frac{1}{2} \begin{bmatrix} 1+e^{i \pi/4} & i(e^{i \pi/4}-1) \\ i(1-e^{i \pi/4}) & 1+e^{i \pi/4} \end{bmatrix}
+= \begin{bmatrix} (2+\sqrt{2})/4 + i/(2 \sqrt{2}) & -1/(2 \sqrt{2})-i (2-\sqrt{2})/4 \\ 1/(2 \sqrt{2})+i (2-\sqrt{2})/4 & (2+\sqrt{2})/4 + i/(2 \sqrt{2}) \end{bmatrix}
 ```
 
 $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$, `Sim.SSZ`, `Phase(45)`
