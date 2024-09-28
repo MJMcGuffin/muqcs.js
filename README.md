@@ -261,13 +261,13 @@ Matrices encoding the effect of a quantum gate:
 | Hadamard, H    | `Sim.H`    | 1 | 2x2 |  |
 | Pauli X, NOT   | `Sim.X`    | 1 | 2x2 | bit flip <br> X = -iYZ = iZY |
 | Pauli Y        | `Sim.Y`    | 1 | 2x2 | Y = iXZ = -iZX |
-| Pauli Z, Phase($\pi$) | `Sim.Z` or `Phase(180)` | 1 | 2x2 | phase flip <br> Z = -iXY = iYX <br> Z = Phase(180) |
+| Pauli Z, Phase($\pi$) | `Sim.Z` or `Sim.Phase(180)` | 1 | 2x2 | phase flip <br> Z = -iXY = iYX <br> Z = Phase(180) |
 | $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX` | 1 | 2x2 | The name SX means 'Square root of X' |
 | $\sqrt{Y}$, SY        | `Sim.SY` | 1 | 2x2 |  |
-| $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ` or `Phase(90)` | 1 | 2x2 | SZ = Phase(90) |
+| $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ` or `Sim.Phase(90)` | 1 | 2x2 | SZ = Phase(90) |
 | $\sqrt[4]{X}$         | `Sim.SSX` | 1 | 2x2 | The name SSX means 'Square root of Square root of X' |
 | $\sqrt[4]{Y}$         | `Sim.SSY` | 1 | 2x2 |  |
-| $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ` or `Phase(45)` | 1 | 2x2 | SSZ = Phase(45) |
+| $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ` or `Sim.Phase(45)` | 1 | 2x2 | SSZ = Phase(45) |
 | global phase shift    | `Sim.GlobalPhase (angleInDegrees)` |  1 | 2x2 | can be placed on any qubit, causes an equal phase shift in all amplitudes |
 | phase shift    | `Sim.Phase (angleInDegrees)` | 1 | 2x2 | Z = Phase(180) |
 | $R_x$          | `Sim.RX (angleInDegrees)`    | 1 | 2x2 |  |
@@ -304,7 +304,7 @@ Pauli Y, `Sim.Y`
 \begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix}
 ```
 
-Pauli Z, Phase($\pi$), `Sim.Z`, `Phase(180)`
+Pauli Z, Phase($\pi$), `Sim.Z`, `Sim.Phase(180)`
 ```math
 \begin{bmatrix} 1 & 0 \\ 0 & -1 \end{bmatrix}
 ```
@@ -319,7 +319,7 @@ $\sqrt{Y}$, SY, `Sim.SY`
 \frac{1}{2} \begin{bmatrix} 1+i & -1-i \\ 1+i & 1+i \end{bmatrix}
 ```
 
-$\sqrt{Z}$, SZ, Phase($\pi/2$), S, `Sim.SZ`, `Phase(90)`
+$\sqrt{Z}$, SZ, Phase($\pi/2$), S, `Sim.SZ`, `Sim.Phase(90)`
 ```math
 \begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}
 ```
@@ -336,7 +336,7 @@ $\sqrt[4]{Y}$, `Sim.SSY`
 = \begin{bmatrix} (2+\sqrt{2})/4 + i/(2 \sqrt{2}) & -1/(2 \sqrt{2})-i (2-\sqrt{2})/4 \\ 1/(2 \sqrt{2})+i (2-\sqrt{2})/4 & (2+\sqrt{2})/4 + i/(2 \sqrt{2}) \end{bmatrix}
 ```
 
-$\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$, `Sim.SSZ`, `Phase(45)`
+$\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$, `Sim.SSZ`, `Sim.Phase(45)`
 ```math
 \begin{bmatrix} 1 & 0 \\ 0 & e^{i \pi/4} \end{bmatrix}
 ```
