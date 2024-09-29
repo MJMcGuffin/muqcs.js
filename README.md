@@ -259,12 +259,12 @@ Matrices encoding the effect of a quantum gate:
 | zero, 0        | `Sim.ZERO` | 1 | 2x2 | not unitary |
 | identity, I    | `Sim.I`    | 1 | 2x2 | no-op <br> I = Phase(0) |
 | Hadamard, H    | `Sim.H`    | 1 | 2x2 |  |
-| Pauli X, NOT   | `Sim.X`    | 1 | 2x2 | bit flip <br> X = -iYZ = iZY |
+| Pauli X, NOT   | `Sim.X`    | 1 | 2x2 | bit flip <br> X = -iYZ = iZY <br> X = HZH |
 | Pauli Y        | `Sim.Y`    | 1 | 2x2 | Y = iXZ = -iZX |
-| Pauli Z, Phase($\pi$) | `Sim.Z` or `Sim.Phase(180)` | 1 | 2x2 | phase flip <br> Z = -iXY = iYX <br> Z = Phase(180) |
-| $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX` | 1 | 2x2 | The name SX means 'Square root of X' |
-| $\sqrt{Y}$, SY        | `Sim.SY` | 1 | 2x2 |  |
-| $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ` or `Sim.Phase(90)` | 1 | 2x2 | SZ = Phase(90) |
+| Pauli Z, Phase($\pi$) | `Sim.Z` or `Sim.Phase(180)` | 1 | 2x2 | phase flip <br> Z = -iXY = iYX = HXH <br> Z = Phase(180) |
+| $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX` | 1 | 2x2 | The name SX means 'Square root of X' <br> $\sqrt{X} = H \sqrt{Z} H$ |
+| $\sqrt{Y}$, SY        | `Sim.SY` | 1 | 2x2 | $\sqrt{Y} = H Z e^{i\pi/4} = X H e^{i\pi/4}$ |
+| $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ` or `Sim.Phase(90)` | 1 | 2x2 | SZ = Phase(90) <br> $\sqrt{Z} = H \sqrt{X} H$ |
 | $\sqrt[4]{X}$         | `Sim.SSX` | 1 | 2x2 | The name SSX means 'Square root of Square root of X' |
 | $\sqrt[4]{Y}$         | `Sim.SSY` | 1 | 2x2 |  |
 | $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ` or `Sim.Phase(45)` | 1 | 2x2 | SSZ = Phase(45) |
@@ -354,16 +354,19 @@ phase shift, `Sim.Phase (angleInDegrees)`
 $R_x$, `Sim.RX (angleInDegrees)`
 ```math
 \begin{bmatrix} \cos(\theta/2) & -i \sin(\theta/2) \\ -i \sin(\theta/2) & \cos(\theta/2) \end{bmatrix}
+= \cos(\theta/2) I - i \sin(\theta/2) X
 ```
 
 $R_y$, `Sim.RY (angleInDegrees)`
 ```math
 \begin{bmatrix} \cos(\theta/2) & -\sin(\theta/2) \\ \sin(\theta/2) & \cos(\theta/2) \end{bmatrix}
+= \cos(\theta/2) I - i \sin(\theta/2) Y
 ```
 
 $R_z$, `Sim.RZ (angleInDegrees)`
 ```math
 \begin{bmatrix} e^{-i \theta/2} & 0 \\ 0 & e^{i \theta/2} \end{bmatrix}
+= \cos(\theta/2) I - i \sin(\theta/2) Z
 ```
 
 `Sim.RotFreeAxis (ax,ay,az)`
