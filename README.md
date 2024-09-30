@@ -259,16 +259,16 @@ Matrices encoding the effect of a quantum gate:
 | zero, 0        | `Sim.ZERO` | 1 | 2x2 | not unitary |
 | identity, I    | `Sim.I`    | 1 | 2x2 | no-op <br> I = Phase(0) |
 | Hadamard, H    | `Sim.H`    | 1 | 2x2 |  |
-| Pauli X, NOT   | `Sim.X`    | 1 | 2x2 | bit flip <br> X = -iYZ = iZY <br> X = HZH |
+| Pauli X, NOT   | `Sim.X`    | 1 | 2x2 | bit flip <br> X = -iYZ = iZY = HZH |
 | Pauli Y        | `Sim.Y`    | 1 | 2x2 | Y = iXZ = -iZX |
-| Pauli Z, Phase($\pi$) | `Sim.Z` or `Sim.Phase(180)` | 1 | 2x2 | phase flip <br> Z = -iXY = iYX = HXH <br> Z = Phase(180) |
-| $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX` | 1 | 2x2 | The name SX means 'Square root of X' <br> $\sqrt{X} = H \sqrt{Z} H$ |
-| $\sqrt{Y}$, SY        | `Sim.SY` | 1 | 2x2 | $\sqrt{Y} = H Z e^{i\pi/4} = X H e^{i\pi/4}$ |
-| $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ` or `Sim.Phase(90)` | 1 | 2x2 | SZ = Phase(90) <br> $\sqrt{Z} = H \sqrt{X} H$ |
-| $\sqrt[4]{X}$         | `Sim.SSX` | 1 | 2x2 | The name SSX means 'Square root of Square root of X' |
-| $\sqrt[4]{Y}$         | `Sim.SSY` | 1 | 2x2 |  |
+| Pauli Z, Phase($\pi$) | `Sim.Z` or `Sim.Phase(180)` | 1 | 2x2 | phase flip <br> Z = Phase(180) <br> Z = -iXY = iYX = HXH |
+| $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX` | 1 | 2x2 | The name SX means 'Square root of X' <br> $\sqrt{X} = H \sqrt{Z} H = \sqrt{Y} \sqrt{Z} \sqrt{Y}^{-1}$ <br> $V = H S H = \sqrt{Y} S \sqrt{Y}^{-1}$ |
+| $\sqrt{Y}$, SY        | `Sim.SY` | 1 | 2x2 | $\sqrt{Y} = H Z e^{i\pi/4} = X H e^{i\pi/4} = \sqrt{X}^{-1} \sqrt{Z} \sqrt{X}$ <br> $\sqrt{Y} = V^{-1} S V$ |
+| $\sqrt{Z}$, SZ, Phase($\pi/2$), S | `Sim.SZ` or `Sim.Phase(90)` | 1 | 2x2 | SZ = Phase(90) <br> $\sqrt{Z} = H \sqrt{X} H$ <br> $S = H V H$ |
+| $\sqrt[4]{X}$         | `Sim.SSX` | 1 | 2x2 | The name SSX means 'Square root of Square root of X' <br> $\sqrt[4]{X} = \sqrt{Y} \sqrt[4]{Z} \sqrt{Y}^{-1}$ <br> $\sqrt[4]{X} = \sqrt{Y} T \sqrt{Y}^{-1}$ |
+| $\sqrt[4]{Y}$         | `Sim.SSY` | 1 | 2x2 | $\sqrt[4]{Y} = \sqrt{X}^{-1} \sqrt[4]{Z} \sqrt{X}$ <br> $\sqrt[4]{Y} = V^{-1} T V$ |
 | $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ` or `Sim.Phase(45)` | 1 | 2x2 | SSZ = Phase(45) |
-| global phase shift    | `Sim.GlobalPhase (angleInDegrees)` |  1 | 2x2 | can be placed on any qubit, causes an equal phase shift in all amplitudes |
+| global phase shift    | `Sim.GlobalPhase (angleInDegrees)` |  1 | 2x2 | Has the same effect regardless of which qubit it is applied to; causes an equal phase shift in all amplitudes |
 | phase shift    | `Sim.Phase (angleInDegrees)` | 1 | 2x2 | Z = Phase(180) |
 | $R_x$          | `Sim.RX (angleInDegrees)`    | 1 | 2x2 |  |
 | $R_y$          | `Sim.RY (angleInDegrees)`    | 1 | 2x2 |  |
