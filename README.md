@@ -270,8 +270,8 @@ Matrices encoding the effect of a quantum gate:
 | $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ` or `Sim.Phase(45)` | 1 | 2x2 | SSZ = Phase(45) |
 | global phase shift    | `Sim.GlobalPhase (angleInDegrees)` |  1 | 2x2 | Has the same effect regardless of which qubit it is applied to; causes an equal phase shift in all amplitudes |
 | phase shift    | `Sim.Phase (angleInDegrees)` | 1 | 2x2 | Z = Phase(180) |
-| $R_x$          | `Sim.RX (angleInDegrees)`    | 1 | 2x2 |  |
-| $R_y$          | `Sim.RY (angleInDegrees)`    | 1 | 2x2 |  |
+| $R_x$          | `Sim.RX (angleInDegrees)`    | 1 | 2x2 | RX(a) = RZ(-90) RY(a) RZ(90) <br> RX(a) = RY(90) RZ(a) RY(-90) |
+| $R_y$          | `Sim.RY (angleInDegrees)`    | 1 | 2x2 | RY(a) = RX(-90) RZ(a) RX(90) |
 | $R_z$          | `Sim.RZ (angleInDegrees)`    | 1 | 2x2 | Phase(angle) * GlobalPhase( -angle/2 ) = RZ( angle ) <br> Phase(angle) = RZ( angle ) * GlobalPhase( angle/2 ) <br> Z = Phase(180) = RZ(180) * GlobalPhase(90) |
 |                | `Sim.RotFreeAxis (ax,ay,az)` | 1 | 2x2 | The angle, in radians, is encoded in the length of the given vector |
 |                | `Sim.RotFreeAxisAngle (ax,ay,az, angleInDegrees)` | 1 | 2x2 |  |
