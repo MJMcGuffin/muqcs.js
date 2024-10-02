@@ -268,7 +268,7 @@ Matrices encoding the effect of a quantum gate:
 | $\sqrt[4]{X}$         | `Sim.SSX` | 1 | 2x2 | The name SSX means 'Square root of Square root of X' <br> $\sqrt[4]{X} = \sqrt{Y} \sqrt[4]{Z} \sqrt{Y}^{-1}$ <br> $\sqrt[4]{X} = \sqrt{Y} T \sqrt{Y}^{-1}$ |
 | $\sqrt[4]{Y}$         | `Sim.SSY` | 1 | 2x2 | $\sqrt[4]{Y} = \sqrt{X}^{-1} \sqrt[4]{Z} \sqrt{X}$ <br> $\sqrt[4]{Y} = V^{-1} T V$ |
 | $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$ | `Sim.SSZ` or `Sim.Phase(45)` | 1 | 2x2 | SSZ = Phase(45) |
-| global phase shift    | `Sim.GlobalPhase (angleInDegrees)` |  1 | 2x2 | Has the same effect regardless of which qubit it is applied to; causes an equal phase shift in all amplitudes |
+| global phase shift    | `Sim.GlobalPhase (angleInDegrees)` |  1 | 2x2 | Has the same effect regardless of which qubit it is applied to; causes an equal phase shift in all amplitudes. Cannot be physically measured. |
 | phase shift    | `Sim.Phase (angleInDegrees)` | 1 | 2x2 | Z = Phase(180) |
 | $R_x$          | `Sim.RX (angleInDegrees)`    | 1 | 2x2 | RX(a) = RZ(-90) RY(a) RZ(90) <br> RX(a) = RY(90) RZ(a) RY(-90) |
 | $R_y$          | `Sim.RY (angleInDegrees)`    | 1 | 2x2 | RY(a) = RX(-90) RZ(a) RX(90) |
