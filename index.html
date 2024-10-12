@@ -1119,7 +1119,7 @@ class Sim { // Simulator
     ) {
         Util.assert( dm._rows===2 && dm._cols===2, "Sim.computeStatsFor2x2DensityMatrix(): matrix is not 2x2");
         /*
-        Assume the local state of the qubit can be expressed as
+        Assume the local state of the qubit is pure and therefore can be expressed as
            |psi> = alpha |0> + e^(i phase) (1-alpha^2)^0.5 |1>
                  = cos(theta/2) |0> + e^(i phase) sin(theta/2) |1>
         where alpha is nonnegative real, theta is in [0,pi], phase is in [0,2pi]
@@ -1146,9 +1146,16 @@ class Sim { // Simulator
                         [ (x + i y)/2   (1-z)/2     ]
 
         which hints at how to recover x, y, z from the entries of the 2x2 matrix.
+        It turns out that, even if the qubit is in a mixed state,
+        its 2x2 reduced density matrix has the same form as the last expression above.
+        See Nielsen and Chuang, page 105, exercise 2.72, about "Bloch sphere for mixed states".
+        The general form for a 2x2 density matrix, even for a mixed state, is (1/2)(I_2 + x X + y Y + z Y),
+        where I_2 is the 2x2 identity matrix, (x,y,z) are the coordinates of the Bloch vector, (X,Y,Z) are the Pauli matrices,
+        and the diagonal elements of the density matrix are real-valued and sum to 1, and the off-diagonal elements are conjugate.
         */
 
         let [ar, ai, br, bi, cr, ci, dr, di] = dm._m;
+        // TODO you should assert that all these equalities are approximately true: ai===0, di===0, br===cr, bi=== -ci
         let x = br + cr;
         let y = ci - bi;
         let z = ar - dr;
@@ -1177,7 +1184,7 @@ class Sim { // Simulator
         }
 
         return {
-            x:x, y:y, z:z, radius:radius, phase:phase, theta:theta,
+            x:x, y:y, z:z, radius:radius, phase:phase, theta:theta, // these specify the Bloch vector
             probabilityOfOne:probabilityOfOne,
             purity:purity,
             linearEntropy:(1-purity._r),
