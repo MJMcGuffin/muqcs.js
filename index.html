@@ -572,6 +572,7 @@ class CMatrix {
         // console.log("totalCost: " + totalCost);
         return list[0];
     }
+    // TODO This should be improved using exponentiation by squaring or binary exponentiation, and something similar could be done for a power() method that raises a matrix to a given exponent
     static tensorPower( matrix, exponent ) {
         Util.assert( exponent>0 && matrix instanceof CMatrix, "CMatrix.naryTensor(): invalid input" );
         let list = [];
