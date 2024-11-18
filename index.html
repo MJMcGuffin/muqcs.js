@@ -1589,14 +1589,26 @@ class Sim { // Simulator
             CMatrix.create([[new Complex(1,1),new Complex(1,-1)],[new Complex(1,-1),new Complex(1,1)]]),
             0.5
         );
+        // This is the inverse
+        Sim.invSX = CMatrix.mult(
+            CMatrix.create([[new Complex(1,-1),new Complex(1,1)],[new Complex(1,1),new Complex(1,-1)]]),
+            0.5
+        );
         // "SY" means "Square root of Y"
         Sim.SY = CMatrix.mult(
             CMatrix.create([[new Complex(1,1),new Complex(-1,-1)],[new Complex(1,1),new Complex(1,1)]]),
             0.5
         );
+        Sim.invSY = CMatrix.mult(
+            CMatrix.create([[new Complex(1,-1),new Complex(1,-1)],[new Complex(-1,1),new Complex(1,-1)]]),
+            0.5
+        );
         // "SZ" means "Square root of Z"; the same thing as Phase(90)
         Sim.SZ = CMatrix.create(
             [[new Complex(1,0),new Complex(0,0)],[new Complex(0,0),new Complex(0,1)]]
+        );
+        Sim.invSZ = CMatrix.create(
+            [[new Complex(1,0),new Complex(0,0)],[new Complex(0,0),new Complex(0,-1)]]
         );
 
 
@@ -1608,11 +1620,20 @@ class Sim { // Simulator
         let c1 = new Complex( (2+Math.SQRT2)/4 /* cos_pi_over_8*cos_pi_over_8 */, Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */ );
         let c2 = new Complex( (2-Math.SQRT2)/4 /* sin_pi_over_8*sin_pi_over_8 */, - Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */ );
         Sim.SSX = CMatrix.create([[c1,c2],[c2,c1]]);
+        let c1_ = new Complex( (2+Math.SQRT2)/4, - Math.SQRT1_2/2 );
+        let c2_ = new Complex( (2-Math.SQRT2)/4, Math.SQRT1_2/2 );
+        Sim.invSSX = CMatrix.create([[c1_,c2_],[c2_,c1_]]);
         c2 = new Complex( - Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */, - (2-Math.SQRT2)/4 /* sin_pi_over_8*sin_pi_over_8 */ );
+        c2_ = new Complex( Math.SQRT1_2/2 , - (2-Math.SQRT2)/4 );
         let c3 = new Complex( Math.SQRT1_2/2 /* sin_pi_over_8*cos_pi_over_8 */, (2-Math.SQRT2)/4 /* sin_pi_over_8*sin_pi_over_8 */ );
+        let c3_ = new Complex( -Math.SQRT1_2/2 , (2-Math.SQRT2)/4 );
         Sim.SSY = CMatrix.create([[c1,c2],[c3,c1]]);
+        Sim.invSSY = CMatrix.create([[c1_,c2_],[c3_,c1_]]);
         Sim.SSZ = CMatrix.create(
             [[new Complex(1,0),new Complex(0,0)],[new Complex(0,0),new Complex(Math.SQRT1_2,Math.SQRT1_2)]]
+        );
+        Sim.invSSZ = CMatrix.create(
+            [[new Complex(1,0),new Complex(0,0)],[new Complex(0,0),new Complex(Math.SQRT1_2,-Math.SQRT1_2)]]
         );
 
 
