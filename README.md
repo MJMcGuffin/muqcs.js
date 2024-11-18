@@ -314,14 +314,29 @@ $\sqrt{X}$, SX, $\sqrt{NOT}$, V, `Sim.SX`
 \frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i \end{bmatrix}
 ```
 
+$\sqrt{X}^{-1}$, $V^{-1}$, `Sim.invSX`
+```math
+\frac{1}{2} \begin{bmatrix} 1-i & 1+i \\ 1+i & 1-i \end{bmatrix}
+```
+
 $\sqrt{Y}$, SY, `Sim.SY`
 ```math
 \frac{1}{2} \begin{bmatrix} 1+i & -1-i \\ 1+i & 1+i \end{bmatrix}
 ```
 
+$\sqrt{Y}^{-1}$, `Sim.invSY`
+```math
+\frac{1}{2} \begin{bmatrix} 1-i & 1-i \\ -1+i & 1-i \end{bmatrix}
+```
+
 $\sqrt{Z}$, SZ, Phase($\pi/2$), S, `Sim.SZ`, `Sim.Phase(90)`
 ```math
 \begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}
+```
+
+$\sqrt{Z}^{-1}$, Phase($-\pi/2$), $S^{-1}$, `Sim.invSZ`, `Sim.Phase(-90)`
+```math
+\begin{bmatrix} 1 & 0 \\ 0 & -i \end{bmatrix}
 ```
 
 $\sqrt[4]{X}$, `Sim.SSX`
