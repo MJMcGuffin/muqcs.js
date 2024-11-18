@@ -260,7 +260,7 @@ Matrices encoding the effect of a quantum gate:
 | identity, I    | `Sim.I`    | 1 | 2x2 | no-op <br> I = Phase(0) |
 | Hadamard, H    | `Sim.H`    | 1 | 2x2 |  |
 | Pauli X, NOT   | `Sim.X`    | 1 | 2x2 | bit flip <br> X = -iYZ = iZY = HZH |
-| Pauli Y        | `Sim.Y`    | 1 | 2x2 | Y = iXZ = -iZX |
+| Pauli Y        | `Sim.Y`    | 1 | 2x2 | Y = iXZ = -iZX = $\sqrt{Z} X \sqrt{Z}^{-1}$ |
 | Pauli Z, Phase($\pi$) | `Sim.Z` or `Sim.Phase(180)` | 1 | 2x2 | phase flip <br> Z = Phase(180) <br> Z = -iXY = iYX = HXH |
 | $\sqrt{X}$, SX, $\sqrt{NOT}$, V | `Sim.SX` | 1 | 2x2 | The name SX means 'Square root of X' <br> $\sqrt{X} = H \sqrt{Z} H = \sqrt{Y} \sqrt{Z} \sqrt{Y}^{-1}$ <br> $V = H S H = \sqrt{Y} S \sqrt{Y}^{-1}$ |
 | $\sqrt{Y}$, SY        | `Sim.SY` | 1 | 2x2 | $\sqrt{Y} = H Z e^{i\pi/4} = X H e^{i\pi/4} = \sqrt{X}^{-1} \sqrt{Z} \sqrt{X}$ <br> $\sqrt{Y} = V^{-1} S V$ |
@@ -345,15 +345,30 @@ $\sqrt[4]{X}$, `Sim.SSX`
 = \begin{bmatrix} (2+\sqrt{2})/4 + i/(2 \sqrt{2}) & (2-\sqrt{2})/4 - i/(2 \sqrt{2}) \\ (2-\sqrt{2})/4 - i/(2 \sqrt{2}) & (2+\sqrt{2})/4 + i/(2 \sqrt{2}) \end{bmatrix}
 ```
 
+$\sqrt[4]{X}^{-1}$, `Sim.invSSX`
+```math
+\begin{bmatrix} (2+\sqrt{2})/4 - i/(2 \sqrt{2}) & (2-\sqrt{2})/4 + i/(2 \sqrt{2}) \\ (2-\sqrt{2})/4 + i/(2 \sqrt{2}) & (2+\sqrt{2})/4 - i/(2 \sqrt{2}) \end{bmatrix}
+```
+
 $\sqrt[4]{Y}$, `Sim.SSY`
 ```math
 \frac{1}{2} \begin{bmatrix} 1+e^{i \pi/4} & i(e^{i \pi/4}-1) \\ i(1-e^{i \pi/4}) & 1+e^{i \pi/4} \end{bmatrix}
 = \begin{bmatrix} (2+\sqrt{2})/4 + i/(2 \sqrt{2}) & -1/(2 \sqrt{2})-i (2-\sqrt{2})/4 \\ 1/(2 \sqrt{2})+i (2-\sqrt{2})/4 & (2+\sqrt{2})/4 + i/(2 \sqrt{2}) \end{bmatrix}
 ```
 
+$\sqrt[4]{Y}^{-1}$, `Sim.invSSY`
+```math
+\begin{bmatrix} (2+\sqrt{2})/4 - i/(2 \sqrt{2}) & 1/(2 \sqrt{2})-i (2-\sqrt{2})/4 \\ -1/(2 \sqrt{2})+i (2-\sqrt{2})/4 & (2+\sqrt{2})/4 - i/(2 \sqrt{2}) \end{bmatrix} 
+```
+
 $\sqrt[4]{Z}$, Phase($\pi/4$), T, $\pi/8$, `Sim.SSZ`, `Sim.Phase(45)`
 ```math
 \begin{bmatrix} 1 & 0 \\ 0 & e^{i \pi/4} \end{bmatrix}
+```
+
+$\sqrt[4]{Z}^{-1}$, Phase($-\pi/4$), $T^{-1}$, `Sim.invSSZ`, `Sim.Phase(-45)`
+```math
+\begin{bmatrix} 1 & 0 \\ 0 & e^{-i \pi/4} \end{bmatrix}
 ```
 
 global phase shift, `Sim.GlobalPhase (angleInDegrees)`
