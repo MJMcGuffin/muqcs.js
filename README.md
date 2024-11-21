@@ -428,5 +428,75 @@ $Z^k = R_z(k \pi) GlobalPhase(k \pi/2) = Phase(k \pi)$
 \begin{bmatrix} 1 & 0 \\ 0 & e^{i k \pi} \end{bmatrix} = \begin{bmatrix} e^{-i k \pi/2} & 0 \\ 0 & e^{i k \pi/2} \end{bmatrix} e^{i k \pi/2}
 ```
 
+Non-standard operations proposed by McGuffin:
 
+Generalized Z
+```math
+Z_G(a,b) = X \cdot Z^{b/\pi} \cdot X \cdot Z^{a/\pi} = \begin{bmatrix} e^{i b} & 0 \\ 0 & e^{i a} \end{bmatrix}
+```
 
+```math
+I = Z_G(0,0)
+```
+
+```math
+Z = Z_G(\pi,0)
+```
+
+```math
+S^{\pm 1} = \sqrt{Z}^{\pm 1} = Z_G(\pm \pi/2, 0)
+```
+
+```math
+T^{\pm 1} = \sqrt[4]{Z}^{\pm 1} = Z_G(\pm \pi/4, 0)
+```
+
+```math
+Phase(a) = Z_G(a,0)
+```
+
+```math
+GlobalPhase(a) = Z_G(a,a)
+```
+
+```math
+R_z(a) =  Z_G(a/2,-a/2)
+```
+
+```math
+Z_G(a,b) Z_G(c,d) = Z_G(a+c,b+d)
+```
+
+Generalized Y
+```math
+Y_G(a,b) = X \cdot Z_G(a,b) = Z^{b/\pi} \cdot X \cdot Z^{a/\pi} = \begin{bmatrix} 0 & e^{i a} \\ e^{i b} & 0 \end{bmatrix}
+```
+
+```math
+X = Y_G(0,0)
+```
+
+```math
+Y = Y_G(-\pi/2,\pi/2)
+```
+
+```math
+Y_G(a,b) Y_G(c,d) = Z_G(b+c,a+d)
+```
+
+```math
+Y_G(a,b) Z_G(c,d) = Z_G(d,c) Y_G(a,b) = Y_G(a+c,b+d)
+```
+
+Generalized Hadamard
+```math
+H_G(a,b) = H \cdot Z_G(a,b) = \frac{1}{\sqrt{2}} \begin{bmatrix} e^{i b} & e^{i a} \\ e^{i b} & -e^{i a} \end{bmatrix}
+```
+
+```math
+H = H_G(0,0)
+```
+
+```math
+H_G(a,a) H_G(b,b) = Z_G(a+b,a+b)
+```
