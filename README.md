@@ -428,12 +428,17 @@ $Z^k = R_z(k \pi) GlobalPhase(k \pi/2) = Phase(k \pi)$
 \begin{bmatrix} 1 & 0 \\ 0 & e^{i k \pi} \end{bmatrix} = \begin{bmatrix} e^{-i k \pi/2} & 0 \\ 0 & e^{i k \pi/2} \end{bmatrix} e^{i k \pi/2}
 ```
 
-Non-standard operations proposed by McGuffin:
+## Non-standard operations proposed by McGuffin
 
-Generalized Z
+### Generalized Z
+
+#### Definition:
+
 ```math
 Z_G(a,b) = X \cdot Z^{b/\pi} \cdot X \cdot Z^{a/\pi} = \begin{bmatrix} e^{i b} & 0 \\ 0 & e^{i a} \end{bmatrix}
 ```
+
+#### Special cases:
 
 ```math
 I = Z_G(0,0)
@@ -463,14 +468,21 @@ GlobalPhase(a) = Z_G(a,a)
 R_z(a) =  Z_G(a/2,-a/2)
 ```
 
+#### Identities:
+
 ```math
 Z_G(a,b) Z_G(c,d) = Z_G(a+c,b+d)
 ```
 
-Generalized Y
+### Generalized Y
+
+#### Definition:
+
 ```math
 Y_G(a,b) = X \cdot Z_G(a,b) = Z^{b/\pi} \cdot X \cdot Z^{a/\pi} = \begin{bmatrix} 0 & e^{i a} \\ e^{i b} & 0 \end{bmatrix}
 ```
+
+#### Special cases:
 
 ```math
 X = Y_G(0,0)
@@ -480,6 +492,8 @@ X = Y_G(0,0)
 Y = Y_G(-\pi/2,\pi/2)
 ```
 
+#### Identities:
+
 ```math
 Y_G(a,b) Y_G(c,d) = Z_G(b+c,a+d)
 ```
@@ -488,14 +502,21 @@ Y_G(a,b) Y_G(c,d) = Z_G(b+c,a+d)
 Y_G(a,b) Z_G(c,d) = Z_G(d,c) Y_G(a,b) = Y_G(a+c,b+d)
 ```
 
-Generalized Hadamard
+### Generalized Hadamard
+
+#### Definition:
+
 ```math
 H_G(a,b) = H \cdot Z_G(a,b) = \frac{1}{\sqrt{2}} \begin{bmatrix} e^{i b} & e^{i a} \\ e^{i b} & -e^{i a} \end{bmatrix}
 ```
 
+#### Special case:
+
 ```math
 H = H_G(0,0)
 ```
+
+#### Identity:
 
 ```math
 H_G(a,a) H_G(b,b) = Z_G(a+b,a+b)
