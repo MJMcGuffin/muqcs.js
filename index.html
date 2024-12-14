@@ -1047,7 +1047,7 @@ class Sim { // Simulator
     // Consider a 16x16 density matrix M defined for 4 qubits, numbered 0 to 3.
     // The caller could do
     //     partialTrace( 4, M, [0,1], true );
-    // to trace out qubits 0 and 1, keeping 2 and 3.
+    // to trace out qubits 0 and 1, keeping 2 and 3, and returning a 4x4 matrix.
     // Or, the caller could do
     //     partialTrace( 4, M, [2,3], false );
     // which would be equivalent.
