@@ -1026,6 +1026,101 @@ class Sim { // Simulator
         return result;
     }
 
+    // Returns the given number i with its bits rearranged,
+    // so that the 0th bit of i is in position a[0],
+    // the 1st bit of i is in position a[1],
+    // etc.
+    // Negative positions in the array a are ignored.
+    // For example, rearrangeBits(i,[1,0]) returns the two least-significant bits of i, swapped, and none of the other bits.
+    // As another example, rearrangeBits(i,[0,1,2])) returns only the three least-significant bits of i, with their positions unchanged.
+    // As another example, rearrangeBits(i,[3,0,1,2])) returns only the four least-significant bits of i, shifted left (to one position more significant)
+    // and wrapped around.
+    static rearrangeBits( i, a /* an array of new positions */ ) {
+        let returnValue = 0;
+        for ( let position = 0; position < a.length; ++position ) {
+            if ( a[position] >= 0 )
+                returnValue |= ( (i >> position) & 1 ) << a[position];
+        }
+        return returnValue;
+    }
+
+    // Consider a 16x16 density matrix M defined for 4 qubits, numbered 0 to 3.
+    // The caller could do
+    //     partialTrace( 4, M, {qubitsToTraceOut:[0,1]} );
+    // to trace out qubits 0 and 1, keeping 2 and 3.
+    // Or, the caller could do
+    //     partialTrace( 4, M, {qubitsToKeep:[2,3]} );
+    // which would be equivalent.
+    //
+    static partialTrace(
+        n, // number of qubits in the circuit
+        inputMatrix, // a matrix of size (2**n)x(2**n)
+        qubitArray, // an array of values in the range 0 to n-1, each representing a qubit
+        arraySpecifiesQubitsToTraceOut // if false, the array specifies the qubits to keep (i.e., marginal qubits)
+    ) {
+        let twoN = 2**n;
+        Util.assert( inputMatrix._rows===twoN && inputMatrix._cols===twoN, "Sim.partialTrace(): input matrix has invalid size" );
+        Util.assert( 0 < qubitArray.length && qubitArray.length < n, "Sim.partialTrace(): array of qubit indices has invalid size" );
+
+        const _qubitArray = [...new Set(qubitArray)].sort((a, b) => a - b); // remove duplicates, and sort in ascending order
+        Util.assert( 0 <= _qubitArray[0] && _qubitArray[_qubitArray.length-1] < n, "Sim.partialTrace(): invalid qubit index" );
+
+        // Compute an array of complementary indices, containing all the indices in [0,n-1] that are not already in _qubitArray
+        let _arrayOfOtherQubits = [];
+        let array_index = 0;
+        for ( let index = 0; index < n; index ++ ) {
+            if ( array_index < _qubitArray.length ) {
+                if ( index < _qubitArray[ array_index ] ) {
+                    _arrayOfOtherQubits.push( index );
+                }
+                else if ( index === _qubitArray[ array_index ] ) {
+                    array_index ++;
+                }
+            }
+            else {
+                _arrayOfOtherQubits.push( index );
+            }
+        }
+        Util.assert( _qubitArray.length + _arrayOfOtherQubits.length === n, "Sim.partialTrace(): error computing complementary set of indices" );
+
+
+        let qubitsToTraceOut = [];
+        let qubitsToKeep = []; // the marginal qubits
+        if ( arraySpecifiesQubitsToTraceOut ) {
+            qubitsToTraceOut = _qubitArray;
+            qubitsToKeep = _arrayOfOtherQubits;
+        }
+        else {
+            qubitsToKeep = _qubitArray;
+            qubitsToTraceOut = _arrayOfOtherQubits;
+        }
+
+
+        let numQubitsToTraceOut = qubitsToTraceOut.length;
+        let numQubitsToKeep = qubitsToKeep.length;
+        let twoOut = 2 ** numQubitsToTraceOut;
+        let twoKeep = 2 ** numQubitsToKeep;
+        let outputMatrix = new CMatrix(twoKeep,twoKeep);
+
+        for (
+            let shared_bits = 0; // bits common to input_row and input_col
+            shared_bits < twoOut;
+            shared_bits ++
+        ) {
+            let shared_bits_shifted = Sim.rearrangeBits( shared_bits, qubitsToTraceOut );
+            for ( let output_row = 0; output_row < twoKeep; output_row ++ ) {
+                let input_row = shared_bits_shifted | Sim.rearrangeBits( output_row, qubitsToKeep );
+                for ( let output_col = 0; output_col < twoKeep; output_col ++ ) {
+                    let input_col = shared_bits_shifted | Sim.rearrangeBits( output_col, qubitsToKeep );
+                    // The next line, in pseudocode, could be written more simply as
+                    //    outputMatrix[output_row,output_col] += inputMatrix[input_row,input_col]
+                    outputMatrix.set( output_row, output_col, Complex.sum( outputMatrix.get(output_row,output_col), inputMatrix.get(input_row,input_col) ));
+                }
+            }
+        }
+        return outputMatrix;
+    }
+
     // Returns a matrix of size (2**n)x(2**n)
     static computeDensityMatrix(
         n, // number of qubits in the circuit
@@ -1035,6 +1130,7 @@ class Sim { // Simulator
         return CMatrix.mult( stateVector, stateVector.conjugateTranspose() );
     }
     // Implements partial trace down to one qubit. Returns a 2x2 matrix
+    // Should be equivalent to partialTrace( n, densityMatrix, [i], false );
     static computeReducedDensityMatrixForOneQubit(
         i, // the qubit of interest; we trace out the other qubits
         n, // number of qubits in the circuit
@@ -1071,6 +1167,7 @@ class Sim { // Simulator
         return rdm;
     }
     // Implements partial trace down to two qubits. Returns a 4x4 matrix
+    // Should be equivalent to partialTrace( n, densityMatrix, [i,j], false );
     static computeReducedDensityMatrixForTwoQubits(
         i,j, // the two qubits of interest; we trace out the other qubits
         n, // number of qubits in the circuit
@@ -1111,6 +1208,38 @@ class Sim { // Simulator
                 }
             }
         }
+        return rdm;
+    }
+    // Implements partial trace to trace out one qubit. Returns a matrix with half as many rows and half as many columns.
+    // Should be equivalent to partialTrace( n, densityMatrix, [i], true );
+    static computeReducedDensityMatrixForOneLessQubit(
+        i, // the qubit to trace out
+        n, // number of qubits in the circuit
+        densityMatrix // a matrix of size (2**n)x(2**n)
+    ) {
+        let twoN = 2**n;
+        Util.assert( 0<=i && i<n, "Sim.computeReducedDensityMatrixForOneLessQubit(): invalid index" );
+        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computeReducedDensityMatrixForOneLessQubit(): density matrix has invalid size" );
+
+        let rdm = new CMatrix(twoN/2,twoN/2); // reduced density matrix
+
+        let mask_i = 1 << i;
+        let mask_low = mask_i - 1;
+        let mask_high = (twoN-1) - mask_i - mask_low;
+        for ( let input_row = 0; input_row < twoN; input_row ++ ) {
+            let traced_bit = (input_row & mask_i) >> i;
+            let output_row = ((input_row & mask_high)>>1) | (input_row & mask_low);
+            for ( let input_col = 0; input_col < twoN; input_col ++ ) {
+                if ( (input_col & mask_i)>>i === traced_bit ) {
+                    let output_col = ((input_col & mask_high)>>1) | (input_col & mask_low);
+
+                    // The next line, in pseudocode, could be written more simply as
+                    //    rdm[output_row,output_col] += densityMatrix[input_row,input_col]
+                    rdm.set( output_row, output_col, Complex.sum( rdm.get(output_row,output_col), densityMatrix.get(input_row,input_col) ));
+                }
+            }
+        }
+
         return rdm;
     }
     // returns an object containing statistics
