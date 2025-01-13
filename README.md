@@ -104,7 +104,7 @@ To simulate a circuit, there are two approaches.  The first involves computing o
         " = ", output.toString({binaryPrefixes:true})
     ));
 
-Each matrix takes up O((2^N)^2) space (half a gigabyte for N=13 qubits, assuming 4 bytes per float), and calling CMatrix.mult() on two such matrices would cost O((2^N)^3) time.
+Each matrix takes up O((2^N)^2) space (one gigabyte for N=13 qubits, assuming 8 bytes per float), and calling CMatrix.mult() on two such matrices would cost O((2^N)^3) time.
 However, the call to naryMult() above causes the matrices to be multiplied right-to-left, because naryMult() checks the sizes of the matrices to optimize the multiplication order, and the right-most matrix passed to naryMult() is just a column vector of size 2^N x 1.  The matrix just before that has size 2^N x 2^N, and multiplying the two together costs O((2^N)^2) and produces another column vector, which gets multiplied by the next matrix before them, etc. 
 Hence, in this first approach, the space and time requirements of each layer of the circuit are O((2^N)^2).
 Notice in the last call to toString() above, we pass in {binaryPrefixes:true}; this causes bit strings like |000> to be printed in front of the matrix, as a reminder of the association between base states and matrix rows.
