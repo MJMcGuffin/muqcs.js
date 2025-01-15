@@ -581,6 +581,29 @@ class CMatrix {
         }
         return CMatrix.naryTensor( list );
     }
+
+    // If the caller needs to know Trace(A * B),
+    // this subroutine saves time by only computing the diagonal elements of the matrix product.
+    // This is equivalent to taking the transpose of one of the matrices,
+    // doing element-wise multiplication, and adding up all the elements in the resulting matrix.
+    //
+    function traceOfMatrixProduct( A, B ) {
+        Util.assert(A._cols === B._rows, "CMatrix.traceOfMatrixProduct(): matrices have incompatible dimensions" );
+        Util.assert(A._rows === B._cols, "CMatrix.traceOfMatrixProduct(): matrix product is not square, hence trace is not defined" );
+        let product_size = A._rows;
+        let returnValue = new Complex();
+        for ( let ii = 0; ii < product_size; ii++ ) {
+            let dotProduct = new Complex();
+            for ( let k = 0; k < A._cols; ++k ) {
+                // TODO this line creates 4 instances of Complex that ultimately aren't
+                // needed; this could be optimized by expanding and inlining the math ops.
+                dotProduct = Complex.sum(dotProduct,Complex.mult(A.get(ii,k),B.get(k,ii)));
+            }
+            returnValue = Complex.sum( returnValue, dotProduct );
+        }
+        return returnValue;
+    }
+
     // returns true if the given matrices are approximately equal, within the given tolerance
     static approximatelyEqual(a,b,tolerance=precisionForApproximateComparison,printMessage=true) {
         Util.assert(a instanceof CMatrix && b instanceof CMatrix,"CMatrix.approximatelyEqual(): wrong type");
@@ -1682,7 +1705,7 @@ class Sim { // Simulator
         // and the matrix |psi><psi| contains the probabilities along its diagonal.
 
 
-        // Here we define the six canonical points on the Bloch sphere.
+        // Here we define the six canonical points on the Bloch sphere: the stabilizer states.
         //
         // |0>
         Sim.braZero = CMatrix.createRowVector([1,0]);
@@ -1774,6 +1797,27 @@ class Sim { // Simulator
         // CX is also often called CNOT
         Sim.CX = CMatrix.create([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]).reverseEndianness( ! usingTextbookConvention );
         Sim.SWAP_2 = Sim.SWAP(0,1,2); // a swap gate for a two-qubit circuit
+
+        // Here we define some magic states.
+        //
+        // This is cos(pi/8)|0> + sin(pi/8)|1> ≈ [ 0.924, 0.383 ]^T
+        // and is given in Bravyi + Kitaev (2004), "Universal quantum computation with ideal Clifford gates and noisy ancillas", page 5, equation 3
+        // In the bloch sphere, it's located at (phase=0, theta=45 degrees)
+        // Other ways to compute the same state:
+        //     CMatrix.naryMult( [ Sim.GlobalPhase(22.5), Sim.invSSY, Sim.H, Sim.ketZero ] );
+        //     CMatrix.naryMult( [ Sim.GlobalPhase(-22.5), Sim.SSY, Sim.ketZero ] );
+        Sim.ket_H_magic_state = CMatrix.createColVector([Math.cos(Math.PI/8),Math.sin(Math.PI/8)]);
+        // This yields (1/2^0.5)(|0> + (e^(i pi/4))(|1>)) ≈ [ 0.707, 0.5+0.5i ]^T
+        // and is given in Leone, Oliviero, Hamma (2022) "Stabilizer Rényi Entropy", page 2, column 2.
+        // In the bloch sphere, it's located at (phase=45 degrees, theta=90 degrees)
+        Sim.ket_H_magic_state_2 = CMatrix.naryMult( [ Sim.SSZ, Sim.H, Sim.ketZero ] );
+        // This is ≈ [ 0.888, 0.325+0.325i ]^T
+        // and is given in Bravyi + Kitaev (2004), "Universal quantum computation with ideal Clifford gates and noisy ancillas", page 5, equation 4
+        // In the bloch sphere, it's located at (phase=45 degrees, theta≈54.7 degrees)
+        let angle_beta = 0.5 * Math.acos(1/Math.sqrt(3));
+        let sine_beta_over_root2 = Math.SQRT1_2 * Math.sin(angle_beta);
+        Sim.ket_T_magic_state = CMatrix.createColVector([ Math.cos(angle_beta), new Complex(sine_beta_over_root2,sine_beta_over_root2) ]);
+
     }
 }
 
