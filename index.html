@@ -587,7 +587,7 @@ class CMatrix {
     // This is equivalent to taking the transpose of one of the matrices,
     // doing element-wise multiplication, and adding up all the elements in the resulting matrix.
     //
-    function traceOfMatrixProduct( A, B ) {
+    static traceOfMatrixProduct( A, B ) {
         Util.assert(A._cols === B._rows, "CMatrix.traceOfMatrixProduct(): matrices have incompatible dimensions" );
         Util.assert(A._rows === B._cols, "CMatrix.traceOfMatrixProduct(): matrix product is not square, hence trace is not defined" );
         let product_size = A._rows;
