@@ -1049,6 +1049,91 @@ class Sim { // Simulator
         return result;
     }
 
+    // This is experimental
+    static measurement(
+        n, // number of qubits in the circuit
+        stateVector, // a matrix of size (2**n)x1, i.e. a column vector
+        i // index of qubit to measure
+    ) {
+        Util.assert( 0<=i && i<n, "Sim.measurement(): invalid indices" );
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.measurement(): state vector has invalid size" );
+
+        let vectorSize = 2 ** n;
+        let probability_0 = 0;
+        let probability_1 = 0;
+        let mask_i = 1 << i;
+        let mask_low = mask_i - 1;
+        let mask_high = (vectorSize-1) - mask_i - mask_low;
+        for ( let row = 0; row < vectorSize; ++row ) {
+            let prob = stateVector.get(row,0).mag()**2;
+            if ( row & mask_i ) {
+                probability_1 += prob;
+            }
+            else {
+                probability_0 += prob;
+            }
+        }
+        let scaleFactor_0 = 1.0 / Math.sqrt( probability_0 );
+        let scaleFactor_1 = 1.0 / Math.sqrt( probability_1 );
+        let new_stateVector_0 = new CMatrix( vectorSize/2, 1 );
+        let new_stateVector_1 = new CMatrix( vectorSize/2, 1 );
+        for ( let row = 0; row < vectorSize; ++row ) {
+            let new_row = ((row & mask_high)>>1) | (row & mask_low);
+            if ( row & mask_i ) {
+                let new_amplitude = Complex.mult( stateVector.get(row,0), scaleFactor_1 );
+                new_stateVector_1.set( new_row, 0, new_amplitude );
+            }
+            else {
+                let new_amplitude = Complex.mult( stateVector.get(row,0), scaleFactor_0 );
+                new_stateVector_0.set( new_row, 0, new_amplitude );
+            }
+        }
+        // Each of these density matrices is pure
+        let new_densityMatrix_0 = CMatrix.mult( new_stateVector_0, new_stateVector_0.conjugateTranspose() );
+        let new_densityMatrix_1 = CMatrix.mult( new_stateVector_1, new_stateVector_1.conjugateTranspose() );
+
+        console.log( "Probability of measuring 0: " + probability_0 );
+        console.log( "Pure state that would result:" );
+        console.log( StringUtil.concatMultiline( stateVector.toString(), ", ", new_densityMatrix_0.toString() ) );
+        console.log( "Probability of measuring 1: " + probability_1 );
+        console.log( "Pure state that would result:" );
+        console.log( StringUtil.concatMultiline( stateVector.toString(), ", ", new_densityMatrix_1.toString() ) );
+
+        // This density matrix is mixed, in general
+        let new_densityMatrix = CMatrix.sum(
+            CMatrix.mult( probability_0, new_densityMatrix_0 ),
+            CMatrix.mult( probability_1, new_densityMatrix_1 )
+        );
+
+        console.log( "Mixed density matrix:" );
+        console.log( new_densityMatrix.toString() );
+
+        // Now, as an alternative way to compute the measurement, in a way that should be equivalent,
+        // we model the state of an observer as an extra qubit that gets entangled with the qubit to measure,
+        // via a CNOT gate.
+        // Then we trace out the observer and the measured qubits.
+        // We should be left with the same mixed state.
+
+        // The new state vector allows for an extra qubit with index n
+        // This new qubit is assumed to be initialized to state |0>
+        let alt_newStateVector = CMatrix.tensor( Sim.ketZero, stateVector );
+
+        // Apply a CNOT gate to entangle the qubit that was to be measured with the newly added qubit
+        alt_newStateVector = Sim.transformStateVectorWith2x2(Sim.X,n,n+1,alt_newStateVector,[[i,true]]);
+
+        let alt_newDensityMatrix = CMatrix.mult( alt_newStateVector, alt_newStateVector.conjugateTranspose() );
+
+        // trace out 2 qubits and keep all the rest
+        alt_newDensityMatrix = Sim.computeReducedDensityMatrixForOneLessQubit( n, n+1, alt_newDensityMatrix );
+        alt_newDensityMatrix = Sim.computeReducedDensityMatrixForOneLessQubit( i, n  , alt_newDensityMatrix );
+
+        console.log( "Alternative way to compute the mixed density matrix:" );
+        console.log( alt_newDensityMatrix.toString() );
+
+        console.log( "Difference:" ); // should output a matrix full of zeros
+        console.log( CMatrix.diff( new_densityMatrix, alt_newDensityMatrix).toString() );
+    }
+
     // Returns the given number i with its bits rearranged,
     // so that the 0th bit of i is in position a[0],
     // the 1st bit of i is in position a[1],
@@ -1304,6 +1389,10 @@ class Sim { // Simulator
         The general form for a 2x2 density matrix, even for a mixed state, is (1/2)(I_2 + x X + y Y + z Y),
         where I_2 is the 2x2 identity matrix, (x,y,z) are the coordinates of the Bloch vector, (X,Y,Z) are the Pauli matrices,
         and the diagonal elements of the density matrix are real-valued and sum to 1, and the off-diagonal elements are conjugate.
+        Another way to compute the coordinates is to use these identities:
+            x = <psi|X|psi> = Tr( rho X )
+            y = <psi|Y|psi> = Tr( rho Y )
+            z = <psi|Z|psi> = Tr( rho Z )
         */
 
         let [ar, ai, br, bi, cr, ci, dr, di] = dm._m;
