@@ -1,5 +1,9 @@
 
 <html>
+<head>
+<title>Muqcs</title>
+<meta charset="utf-8"/>
+</head>
 <body>
 Open a console (in Chrome, this is done by selecting 'Developer Tools'). From the console prompt, you can call functions in the code and see output printed to the console.
 
@@ -1778,6 +1782,149 @@ class Sim { // Simulator
         }
         //console.log("Pairwise Von Neumann entropies appear in upper triangular half:\n" + result.toString());
         return result;
+    }
+
+    // Computes the Second Stabilizer Rényi Entropy (SSRE) magic for a given density matrix.
+    // This measure quantifies magic (non-stabilizerness)
+    // by measuring how spread out the state's density matrix
+    // is when expanded in the basis of Pauli operators.
+    // For N qubits, SSRE = -log_2(1/2^N ∑_P (Tr(rho P))^4) where P iterates over all Pauli-string matrices of length N.
+    //
+    // Returns a value between 0 and log_2(2^N + 1) - log_2(2) = log_2(2^N + 1) - 1
+    //
+    // In tests on my 2022 laptop, it returns in less than a second for N <= 6, if the cache is used.
+    //
+    // The runtime of the algorithm is O(16^N), because there are 4^N pauli strings of length N to consider,
+    //     and for each pauli string, we must compute the trace of a matrix product
+    //     where the matrices have size (2^N)x(2^N).
+    //     Normally, the matrix product itself would take time O(2^(3n)) (assuming naive matrix multiplication),
+    //     but since we only need the trace of the matrix product,
+    //     we can merely find the diagonal elements of the matrix product,
+    //     so finding the trace of the matrix product takes O(2^(2n)) time.
+    //     Multiplying 4^N pauli strings by O(2^(2n)) yields a total time of O(2^(4n)) = O(16^N)
+    //
+    // Using the cache can result in a roughly 2x or 3x performance increase.
+    // Using the cache for a given N requires storing 16^(N+1) bytes, or 1 megabyte for N=4, 256 megabytes for N=6.
+    //     This is because there are 4^N pauli strings, each one resulting in a pauli matrix that is (2^N)x(2^N),
+    //     each element requiring 8 bytes for the real and 8 bytes for the imaginary component,
+    //     so (4^N)x(2^N)x(2^N)x16 = 16^(N+1) storage for the entire cache of pauli matrices of length N.
+    // So the cache should be used whenever N <= 5 and maybe even for N=6.
+    //
+    // Using the stack improves performance by about 10-15%, based on my tests.
+    //
+    // If the caller asks for both the cache and the stack to be used,
+    // the stack will only increase performance during the first call when the cache is populated;
+    // on subsequent calls, the cache is used and the stack makes no difference.
+    //
+    // The computation is based on
+    //     Leone, Oliviero, Hamma (2022) "Stabilizer rényi entropy"  https://scholar.google.com/scholar?q=leone+Stabilizer+Renyi+Entropy
+    //         equation 3
+    //         and the paragraph below equation 3
+    //         but NOT on equation 7
+    //     and
+    //     Niroula et al. (2024) "Phase transition in magic with random quantum circuits"  https://scholar.google.com/scholar?q=niroula+Phase+transition+in+magic+with+random+quantum+circuits
+    //         section 2, second paragraph
+    // Note that Leone et al. (2022) provide an example with an exact expression on page 2, 2nd paragraph after equation 5:
+    //     the SSRE magic of |H>^(⊗n) is (1-alpha)^(-1) (n log(2^(1-alpha)+1)-n)
+    //     Setting alpha=2, the expression reduces to n(2-log2(3))
+    //
+    static computeSSREMagic( densityMatrix, useCache=false, useStack=true ) {
+        // Verify the density matrix is square with dimensions that are powers of 2
+        Util.assert(densityMatrix._rows === densityMatrix._cols, "Sim.computeSSREMagic(): density matrix must be square");
+        const dim = densityMatrix._rows;
+        const N = Math.log2(dim);
+        Util.assert(Math.pow(2, N) === dim, "Sim.computeSSREMagic(): density matrix dimension must be a power of 2");
+
+        const singleQubitPauliMatrices = [ Sim.I, Sim.X, Sim.Y, Sim.Z ];
+        const NUM_SINGLE_QUBIT_PAULI_MATRICES = singleQubitPauliMatrices.length;
+
+        let sumOfTraces = 0;
+
+        // Generate all possible Pauli strings of length N
+        const numPauliStrings = Math.pow( NUM_SINGLE_QUBIT_PAULI_MATRICES, N );
+        //console.log(`numPauliStrings is ${numPauliStrings}`);
+
+        // Use a stack so that we can usually reuse most of the tensor product from the previous iteration
+        let previous_pauliString = [ ];
+        let stackOfPauliProducts = [ ];
+
+        let saveToCache = false;
+        let retrieveFromCache = false;
+        if ( useCache ) {
+            if ( Sim.pauliMatrixCache === undefined )
+                Sim.pauliMatrixCache = [ [] ]; // a 2D array, where the first index is N, and the second index is the pauli string index
+
+            if ( pauliMatrixCache.length > N && pauliMatrixCache[ N ] !== undefined )
+                retrieveFromCache = true;
+            else {
+                saveToCache = true;
+                pauliMatrixCache[ N ] = [];
+            }
+        }
+
+        for ( let pauliStringIndex = 0; pauliStringIndex < numPauliStrings; pauliStringIndex ++ ) {
+            let pauliString = []; // an array of N indices, each indexing into singleQubitPauliMatrices
+            let num = pauliStringIndex;
+            // convert num to base 4 to get Pauli string
+            for ( let j = 0; j < N; j++ ) {
+                pauliString.unshift( num % NUM_SINGLE_QUBIT_PAULI_MATRICES );
+                num = Math.floor( num / NUM_SINGLE_QUBIT_PAULI_MATRICES );
+            }
+
+            let P;
+
+            if ( retrieveFromCache ) {
+                P = pauliMatrixCache[ N ][ pauliStringIndex ];
+            }
+            else {
+                if ( useStack ) {
+                    // The first element that differs between previous_pauliString and pauliString
+                    // tells us how much to pop off from the stack
+                    for ( let j = 0; j < previous_pauliString.length && j < pauliString.length; ++j ) {
+                        if ( previous_pauliString[j] !== pauliString[j] ) {
+                            stackOfPauliProducts.splice( j ); // remove the jth, and all subsequent, elements
+                            //console.log(`spliced from ${j}`);
+                            break;
+                        }
+                    }
+
+                    // Construct and push the appropriate matrices onto the stack.
+                    // Do this by iterating over values of j, up to N,
+                    // and for each value of j,
+                    // construct the j-qubit Pauli matrix, specified by pauliString[0..j].
+                    for ( let j = stackOfPauliProducts.length; j < N; ++j ) {
+                        let M;
+                        if ( j === 0 )
+                            M = singleQubitPauliMatrices[ pauliString[0] ];
+                        else
+                            M = CMatrix.tensor(stackOfPauliProducts.at(-1), singleQubitPauliMatrices[ pauliString[j] ]);
+                        stackOfPauliProducts.push( M );
+                    }
+
+                    P = stackOfPauliProducts.at( -1 ); // last matrix on the stack
+
+                    previous_pauliString = [...pauliString]; // deep copy of array elements
+                }
+                else {
+                    // Construct the N-qubit Pauli operator from scratch for each iteration.
+                    // This is simpler, but slower, than using the stack.
+                    P = singleQubitPauliMatrices[ pauliString[0] ];
+                    for ( let j = 1; j < N; ++j ) {
+                        P = CMatrix.tensor(P, singleQubitPauliMatrices[ pauliString[j] ]);
+                    }
+                }
+            }
+
+            let trace = CMatrix.traceOfMatrixProduct( densityMatrix, P ).mag();
+            let traceSquared = trace * trace;
+            let traceToThe4th = traceSquared * traceSquared;
+            sumOfTraces += traceToThe4th;
+
+            if ( saveToCache ) {
+                pauliMatrixCache[ N ][ pauliStringIndex ] = P.copy();
+            }
+        }
+        return - Math.log2( sumOfTraces / ( 2 ** N ) );
     }
 
     // If the client wants to, they could change the value of usingTextbookConvention
