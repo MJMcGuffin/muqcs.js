@@ -1854,11 +1854,11 @@ class Sim { // Simulator
             if ( Sim.pauliMatrixCache === undefined )
                 Sim.pauliMatrixCache = [ [] ]; // a 2D array, where the first index is N, and the second index is the pauli string index
 
-            if ( pauliMatrixCache.length > N && pauliMatrixCache[ N ] !== undefined )
+            if ( Sim.pauliMatrixCache.length > N && Sim.pauliMatrixCache[ N ] !== undefined )
                 retrieveFromCache = true;
             else {
                 saveToCache = true;
-                pauliMatrixCache[ N ] = [];
+                Sim.pauliMatrixCache[ N ] = [];
             }
         }
 
@@ -1874,7 +1874,7 @@ class Sim { // Simulator
             let P;
 
             if ( retrieveFromCache ) {
-                P = pauliMatrixCache[ N ][ pauliStringIndex ];
+                P = Sim.pauliMatrixCache[ N ][ pauliStringIndex ];
             }
             else {
                 if ( useStack ) {
@@ -1921,7 +1921,7 @@ class Sim { // Simulator
             sumOfTraces += traceToThe4th;
 
             if ( saveToCache ) {
-                pauliMatrixCache[ N ][ pauliStringIndex ] = P.copy();
+                Sim.pauliMatrixCache[ N ][ pauliStringIndex ] = P.copy();
             }
         }
         return - Math.log2( sumOfTraces / ( 2 ** N ) );
