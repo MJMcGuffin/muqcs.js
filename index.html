@@ -1998,7 +1998,7 @@ class Sim { // Simulator
             CMatrix.create([[new Complex(1,-1),new Complex(1,-1)],[new Complex(-1,1),new Complex(1,-1)]]),
             0.5
         );
-        // "SZ" means "Square root of Z"; the same thing as Phase(90)
+        // "SZ" means "Square root of Z"; the same thing as Phase(90), and the same thing as what is often called an S gate.
         Sim.SZ = CMatrix.create(
             [[new Complex(1,0),new Complex(0,0)],[new Complex(0,0),new Complex(0,1)]]
         );
@@ -2008,7 +2008,7 @@ class Sim { // Simulator
 
 
         // The "SS" prefix in "SSX", "SSY", "SSZ" means "Square root of Square root", i.e., 4th root.
-        // SSZ is the same thing as Phase(45).
+        // SSZ is the same thing as Phase(45), and the same thing as what is often called a T gate.
         //
         //let cos_pi_over_8 = Math.cos(Math.PI/8);
         //let sin_pi_over_8 = Math.sin(Math.PI/8);
