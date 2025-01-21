@@ -1827,6 +1827,13 @@ class Sim { // Simulator
     // Note that Leone et al. (2022) provide an example with an exact expression on page 2, 2nd paragraph after equation 5:
     //     the SSRE magic of |H>^(⊗n) is (1-alpha)^(-1) (n log(2^(1-alpha)+1)-n)
     //     Setting alpha=2, the expression reduces to n(2-log2(3))
+    //     which leads to this way to test the routine:
+    //        for ( let n = 1; n <= 7; n++ ) {
+    //            let stateVector = CMatrix.tensorPower( Sim.ket_H_magic_state, n );
+    //            let rho = Sim.computeDensityMatrix( n, stateVector );
+    //            let magic = Sim.computeSSREMagic( rho );
+    //            console.log(`n=${n}; computed: ${magic}; predicted: ${n*(2-Math.log2(3))}`);
+    //        }
     //
     static computeSSREMagic( densityMatrix, useCache=false, useStack=true ) {
         // Verify the density matrix is square with dimensions that are powers of 2
