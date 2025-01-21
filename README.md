@@ -211,7 +211,7 @@ There is currently no support for measurement gates, nor for iSWAP gates.
 The code depends on <a href="https://mathjs.org/">mathjs</a>,
 but only in one subroutine (Sim.eigendecomposition()) which is used to compute concurrence and von Neumann entropy.
 
-**Under Construction**
+**Background Notes**
 
 Think of bra ($\langle a |$) as a row vector, and ket ($| a \rangle$) as a column vector equal to the conjugate transpose of the bra.
 Then, multiplying a bra by a ket yields a dot product (i.e., $(\langle a |)(| b \rangle)$, abbreviated to $\langle a | b \rangle$, yields a 1x1 matrix);
