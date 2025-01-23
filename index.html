@@ -1797,11 +1797,11 @@ class Sim { // Simulator
     // The runtime of the algorithm is O(16^N), because there are 4^N pauli strings of length N to consider,
     //     and for each pauli string, we must compute the trace of a matrix product
     //     where the matrices have size (2^N)x(2^N).
-    //     Normally, the matrix product itself would take time O(2^(3n)) (assuming naive matrix multiplication),
+    //     Normally, the matrix product itself would take time O(2^(3N)) (assuming naive matrix multiplication),
     //     but since we only need the trace of the matrix product,
     //     we can merely find the diagonal elements of the matrix product,
-    //     so finding the trace of the matrix product takes O(2^(2n)) time.
-    //     Multiplying 4^N pauli strings by O(2^(2n)) yields a total time of O(2^(4n)) = O(16^N)
+    //     so finding the trace of the matrix product takes O(2^(2N)) time.
+    //     Multiplying 4^N pauli strings by O(2^(2N)) yields a total time of O(2^(4N)) = O(16^N)
     //
     // Using the cache can result in a roughly 2x or 3x performance increase.
     // Using the cache for a given N requires storing 16^(N+1) bytes, or 1 megabyte for N=4, 256 megabytes for N=6.
@@ -1825,8 +1825,8 @@ class Sim { // Simulator
     //     Niroula et al. (2024) "Phase transition in magic with random quantum circuits"  https://scholar.google.com/scholar?q=niroula+Phase+transition+in+magic+with+random+quantum+circuits
     //         section 2, second paragraph
     // Note that Leone et al. (2022) provide an example with an exact expression on page 2, 2nd paragraph after equation 5:
-    //     the SSRE magic of |H>^(⊗n) is (1-alpha)^(-1) (n log(2^(1-alpha)+1)-n)
-    //     Setting alpha=2, the expression reduces to n(2-log2(3))
+    //     the SSRE magic of |H>^(⊗N) is (1-alpha)^(-1) (N log(2^(1-alpha)+1)-N)
+    //     Setting alpha=2, the expression reduces to N(2-log2(3))
     //     which leads to this way to test the routine:
     //        for ( let n = 1; n <= 7; n++ ) {
     //            let stateVector = CMatrix.tensorPower( Sim.ket_H_magic_state, n );
@@ -2544,132 +2544,11 @@ function performRegressionTest( verbose=true ) {
 
 
 
-
     console.log( allSuccessful ? "All regression tests passed." : "At least one regression test failed." );
 }
 
 performRegressionTest(false);
 
-
-
-// TODO add a swap matrix to this - but how ?
-// Test the equivalence of two ways of transforming state vectors.
-// One way uses an explicit matrix of size (2**n)x(2**n),
-// the other uses a much less expensive way.
-// If the output state vector is zero, the two methods found the same result.
-n = 3;
-let sv = new CMatrix(2**n,1); // state vector
-for ( let i = 0; i < 2*(2**n); ++i ) sv._m[i] = Math.random();
-console.log('random input state vector is ' + sv.transpose().toString())
-for ( let ii = 0; ii < n; ++ii ){ // control bit
-    for ( jj = 0; jj < n; ++jj ) { // 2x2 gate bit
-        if ( ii===jj )
-            continue;
-        m_method1 = Sim.expand4x4ForNWires( Sim.CX, ii, jj, n );
-        r_method1 = CMatrix.mult( m_method1, sv );
-        m_method2 = Sim.X;
-        r_method2 = Sim.transformStateVectorWith2x2(m_method2,jj,n,sv,[[ii,true]]);
-        //console.log(r_method1.toString());
-        //console.log(r_method2.toString());
-        console.log(`    control bit on wire ${ii}, 2x2 gate on wire ${jj}, difference is ` + CMatrix.diff(r_method1,r_method2).transpose().toString());
-    }
-}
-
-
-// Simulate a circuit containing many ccnot, cnot, and other gates.
-let time0 = (new Date()).getTime();
-n = 4;
-let numGates = 0;
-let sv0 = new CMatrix(2**n,1); // state vector
-sv0.set(0,0,1);
-sv = sv0.copy();
-for ( let ii = 0; ii < n; ++ii ) {
-    // apply a gate to the (ii)th wire
-    if ( ii%3===0 ) {
-        console.log(`h at ${ii}`);
-        sv = Sim.transformStateVectorWith2x2(Sim.H,ii,n,sv,[]);
-    }
-    else if ( ii%3===1 ) {
-        console.log(`rootx at ${ii}`);
-        sv = Sim.transformStateVectorWith2x2(Sim.SX,ii,n,sv,[]);
-    }
-    else {
-        console.log(`fourthrooty at ${ii}`);
-        sv = Sim.transformStateVectorWith2x2(Sim.SSY,ii,n,sv,[]);
-    }
-    numGates ++;
-}
-console.log("output is "+sv.transpose().toString());
-for ( let ii = 0; ii < Math.floor(n/2); ++ii ) {
-    // add a ccnot gate on random wires
-    let jj1 = Math.floor( Math.random() * n );
-    let jj2 = Math.floor( Math.random() * (n-1) );
-    if ( jj2 === jj1 ) jj2=n-1;
-    let jj3 = Math.floor( Math.random() * (n-2) );
-    if ( jj3 === jj1 || jj3 === jj2 ) jj3++;
-    if ( jj3 === jj1 || jj3 === jj2 ) jj3++;
-    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && 0<=jj3 && jj3<n && jj1!==jj2 && jj2!==jj3 && jj1!==jj3, "unexpected condition 1" );
-    console.log(`ccnot at ${jj1}, ${jj2}, ${jj3}`);
-    sv = Sim.transformStateVectorWith2x2(Sim.X,jj3,n,sv,[[jj1,true],[jj2,true]]);
-    numGates ++;
-    console.log("output is "+sv.transpose().toString());
-
-    // add a swap gate on random wires
-    jj1 = Math.floor( Math.random() * n );
-    jj2 = Math.floor( Math.random() * (n-1) );
-    if ( jj2 === jj1 ) jj2=n-1;
-    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 2" );
-    console.log(`swap at ${jj1}, ${jj2}`);
-    sv = Sim.transformStateVectorWithSwap(jj1,jj2,n,sv);
-    numGates ++;
-    console.log("output is "+sv.transpose().toString());
-
-    // add a cnot gate on random wires
-    jj1 = Math.floor( Math.random() * n );
-    jj2 = Math.floor( Math.random() * (n-1) );
-    if ( jj2 === jj1 ) jj2=n-1;
-    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 3" );
-    console.log(`cnot at ${jj1}, ${jj2}`);
-    sv = Sim.transformStateVectorWith2x2(Sim.X,jj2,n,sv,[[jj1,true]]);
-    numGates ++;
-    console.log("output is "+sv.transpose().toString());
-
-    // add a cfourthrootx gate on random wires
-    jj1 = Math.floor( Math.random() * n );
-    jj2 = Math.floor( Math.random() * (n-1) );
-    if ( jj2 === jj1 ) jj2=n-1;
-    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 4" );
-    console.log(`cfourthrootx at ${jj1}, ${jj2}`);
-    sv = Sim.transformStateVectorWith2x2(Sim.SSX,jj2,n,sv,[[jj1,true]]);
-    numGates ++;
-    console.log("output is "+sv.transpose().toString());
-
-    // add a cfourthrooty gate on random wires
-    jj1 = Math.floor( Math.random() * n );
-    jj2 = Math.floor( Math.random() * (n-1) );
-    if ( jj2 === jj1 ) jj2=n-1;
-    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 5" );
-    console.log(`cfourthrooty at ${jj1}, ${jj2}`);
-    sv = Sim.transformStateVectorWith2x2(Sim.SSY,jj2,n,sv,[[jj1,true]]);
-    numGates ++;
-    console.log("output is "+sv.transpose().toString());
-
-    // add a ch gate on random wires
-    jj1 = Math.floor( Math.random() * n );
-    jj2 = Math.floor( Math.random() * (n-1) );
-    if ( jj2 === jj1 ) jj2=n-1;
-    Util.assert(0<=jj1 && jj1<n && 0<=jj2 && jj2<n && jj1!==jj2, "unexpected condition 6" );
-    console.log(`ch at ${jj1}, ${jj2}`);
-    sv = Sim.transformStateVectorWith2x2(Sim.H,jj2,n,sv,[[jj1,true]]);
-    numGates ++;
-    console.log("output is "+sv.transpose().toString());
-}
-console.log("output is "+sv.transpose().toString());
-let time1 = (new Date()).getTime();
-let timeTaken = time1 - time0; // in milliseconds
-console.log(`${numGates} gates on ${n} qubits in ${timeTaken} milliseconds`);
-
 </script>
 </body>
 </html>
-
