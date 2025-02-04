@@ -122,11 +122,11 @@ The output is:
 A second approach to simulating the same circuit is to not compute any explicit matrices of size 2^N x 2^N.  Instead, we only store the state vector of size 2^N x 1, and update it for each layer of the circuit.  The following code does this:
 
     input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
-    step1 = Sim.transformStateVectorWith2x2(Sim.H,2,3,input,[]);
-    step1 = Sim.transformStateVectorWith2x2(Sim.SSY,1,3,step1,[]);
-    step1 = Sim.transformStateVectorWith2x2(Sim.SSX,0,3,step1,[]);
-    step2 = Sim.transformStateVectorWith2x2(Sim.SSX,1,3,step1,[]);
-    output = Sim.transformStateVectorWith2x2(Sim.X,1,3,step2,[[2,true]]);
+    step1 = Sim.qubitWiseMultiply(Sim.H,2,3,input,[]);
+    step1 = Sim.qubitWiseMultiply(Sim.SSY,1,3,step1,[]);
+    step1 = Sim.qubitWiseMultiply(Sim.SSX,0,3,step1,[]);
+    step2 = Sim.qubitWiseMultiply(Sim.SSX,1,3,step1,[]);
+    output = Sim.qubitWiseMultiply(Sim.X,1,3,step2,[[2,true]]);
     console.log(StringUtil.concatMultiline(
         input.toString(),
         " -> ", step1.toString(),
@@ -135,7 +135,7 @@ A second approach to simulating the same circuit is to not compute any explicit 
     ));
 
 In this second approach, the space and time requirements of each step of the circuit are O(2^N), so, much better than in the first approach.
-The magic happens in the Sim.transformStateVectorWith2x2() method, which is inspired by Quirk’s source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js (<a href="https://github.com/Strilanc/Quirk/blob/master/src/math/Matrix.js#L678">link to specific line</a>).  This is essentially the "qubit-wise multiplication" algorithm described in chapter 6 of the book Viamontes, G. F., Markov, I. L., & Hayes, J. P. (2009) "Quantum circuit simulation", although their pseudocode contains errors and does not support control bits.
+The key algorithm enabling this is in Sim.qubitWiseMultiply() method, which is inspired by Quirk’s source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js (<a href="https://github.com/Strilanc/Quirk/blob/master/src/math/Matrix.js#L678">link to specific line</a>).  This is essentially the "qubit-wise multiplication" algorithm described in chapter 6 of the book Viamontes, G. F., Markov, I. L., & Hayes, J. P. (2009) "Quantum circuit simulation", although their pseudocode contains errors and does not support control bits.
 
 More explanation and code examples appear in the slides under the doc folder of the repository.
 
@@ -158,8 +158,8 @@ Here is an example computing these statistics with muqcs:
     step2 = CMatrix.naryTensor( [ Sim.RX(45) /*q3*/, Sim.RZ(120) /*q2*/,
                                   Sim.RZ(100) /*q1*/, Sim.I /*q0*/ ] );
     output = CMatrix.naryMult([ step2, step1, input ]);
-    output = Sim.transformStateVectorWith2x2(Sim.RZ_90deg,2,N,output,[[1,true]]/*list of control qubits*/);
-    output = Sim.transformStateVectorWith2x2(Sim.RY(45),2,N,output,[[3,true]]/*list of control qubits*/);
+    output = Sim.qubitWiseMultiply(Sim.RZ_90deg,2,N,output,[[1,true]]/*list of control qubits*/);
+    output = Sim.qubitWiseMultiply(Sim.RY(45),2,N,output,[[3,true]]/*list of control qubits*/);
     baseStateProbabilities = new CMatrix( output._rows, 1 );
     for ( let i=0; i < output._rows; ++i ) baseStateProbabilities.set( i, 0, output.get(i,0).mag()**2 );
     console.log(StringUtil.concatMultiline(
