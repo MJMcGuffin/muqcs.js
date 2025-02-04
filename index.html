@@ -940,9 +940,9 @@ class Sim { // Simulator
         stateVector, // a matrix of size (2**n)x1, i.e. a column vector
         listOfControlBits = [] // a list of pairs of the form [wire_index, flag] where 0<=wire_index<n and flag is true for a control bit and false for an anti-control bit
     ) {
-        Util.assert( 0<=i && i<n, "Sim.transformStateVectorWith2x2(): invalid index" );
-        Util.assert( m._rows===m._cols && m._rows===2, "Sim.transformStateVectorWith2x2(): invalid size" );
-        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.transformStateVectorWith2x2(): state vector has invalid size" );
+        Util.assert( 0<=i && i<n, "Sim.qubitWiseMultiply(): invalid index" );
+        Util.assert( m._rows===m._cols && m._rows===2, "Sim.qubitWiseMultiply(): invalid size" );
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.qubitWiseMultiply(): state vector has invalid size" );
 
         let inclusionMask = 0;
         let desiredValueMask = 0;
@@ -964,7 +964,7 @@ class Sim { // Simulator
         let result = stateVector.copy();
         for ( let indexOfStartOfBlock = 0; indexOfStartOfBlock < stateVector._rows; indexOfStartOfBlock += sizeOfBlock ) {
             for ( let offsetWithinBlock = 0; offsetWithinBlock < sizeOfHalfBlock; offsetWithinBlock ++ ) {
-                Util.assert( indexOfStartOfBlock | offsetWithinBlock === indexOfStartOfBlock + offsetWithinBlock, "Sim.transformStateVectorWith2x2(): unexpected numbers" );
+                Util.assert( indexOfStartOfBlock | offsetWithinBlock === indexOfStartOfBlock + offsetWithinBlock, "Sim.qubitWiseMultiply(): unexpected numbers" );
                 let stateIndex1 = indexOfStartOfBlock | offsetWithinBlock;
                 if ( (stateIndex1 & inclusionMask) !== desiredValueMask )
                     continue;
@@ -1123,7 +1123,7 @@ class Sim { // Simulator
         let alt_newStateVector = CMatrix.tensor( Sim.ketZero, stateVector );
 
         // Apply a CNOT gate to entangle the qubit that was to be measured with the newly added qubit
-        alt_newStateVector = Sim.transformStateVectorWith2x2(Sim.X,n,n+1,alt_newStateVector,[[i,true]]);
+        alt_newStateVector = Sim.qubitWiseMultiply(Sim.X,n,n+1,alt_newStateVector,[[i,true]]);
 
         let alt_newDensityMatrix = CMatrix.mult( alt_newStateVector, alt_newStateVector.conjugateTranspose() );
 
@@ -2194,7 +2194,7 @@ function performRegressionTest( verbose=true ) {
     input = CMatrix.tensor( Sim.ketZero /*q1*/, Sim.ketZero /*q0*/, usingTextbookConvention );
     step1 = CMatrix.tensor( Sim.RX_90deg /*q1*/, Sim.RX_90deg /*q0*/, usingTextbookConvention );
     output = CMatrix.mult( step1, input );
-    output = Sim.transformStateVectorWith2x2( Sim.RZ_90deg,1,2,output,[[0,true]]);
+    output = Sim.qubitWiseMultiply( Sim.RZ_90deg,1,2,output,[[0,true]]);
     if ( verbose ) console.log(StringUtil.concatMultiline(
         "... = ",
         output.toString({binaryPrefixes:true})
@@ -2327,11 +2327,11 @@ function performRegressionTest( verbose=true ) {
     // qubit q2 |0>-------H----------------------o------
     //
     input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ], usingTextbookConvention  );
-    step1 = Sim.transformStateVectorWith2x2(Sim.H,2,3,input,[]);
-    step1 = Sim.transformStateVectorWith2x2(Sim.SSY,1,3,step1,[]);
-    step1 = Sim.transformStateVectorWith2x2(Sim.SSX,0,3,step1,[]);
-    step2 = Sim.transformStateVectorWith2x2(Sim.SSX,1,3,step1,[]);
-    output = Sim.transformStateVectorWith2x2(Sim.X,1,3,step2,[[2,true]]);
+    step1 = Sim.qubitWiseMultiply(Sim.H,2,3,input,[]);
+    step1 = Sim.qubitWiseMultiply(Sim.SSY,1,3,step1,[]);
+    step1 = Sim.qubitWiseMultiply(Sim.SSX,0,3,step1,[]);
+    step2 = Sim.qubitWiseMultiply(Sim.SSX,1,3,step1,[]);
+    output = Sim.qubitWiseMultiply(Sim.X,1,3,step2,[[2,true]]);
     if ( verbose ) console.log(StringUtil.concatMultiline(
         input.toString(),
         " -> ",
@@ -2463,10 +2463,10 @@ function performRegressionTest( verbose=true ) {
     // qubit q2 |0>---(x^0.5)---o----
     //
     input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ], usingTextbookConvention  );
-    step1 = Sim.transformStateVectorWith2x2(Sim.SX,0,3,input,[]);
-    step1 = Sim.transformStateVectorWith2x2(Sim.SX,1,3,step1,[]);
-    step1 = Sim.transformStateVectorWith2x2(Sim.SX,2,3,step1,[]);
-    output = Sim.transformStateVectorWith2x2(Sim.X,1,3,step1,[[2,true]]);
+    step1 = Sim.qubitWiseMultiply(Sim.SX,0,3,input,[]);
+    step1 = Sim.qubitWiseMultiply(Sim.SX,1,3,step1,[]);
+    step1 = Sim.qubitWiseMultiply(Sim.SX,2,3,step1,[]);
+    output = Sim.qubitWiseMultiply(Sim.X,1,3,step1,[[2,true]]);
     if ( verbose ) console.log(StringUtil.concatMultiline(
         input.toString(),
         " -> ",
@@ -2527,13 +2527,13 @@ function performRegressionTest( verbose=true ) {
     allSuccessful &= success;
 
     // Try simulating the same circuit, but this time without using explicit large matrices.
-    output_method2 = Sim.transformStateVectorWith2x2(Sim.H,0,4,input,[]);
-    output_method2 = Sim.transformStateVectorWith2x2(Sim.SX,1,4,output_method2,[]);
-    output_method2 = Sim.transformStateVectorWith2x2(Sim.SX,3,4,output_method2,[]);
-    output_method2 = Sim.transformStateVectorWith2x2(Sim.X,2,4,output_method2,[[0,true]]);
-    output_method2 = Sim.transformStateVectorWith2x2(Sim.X,1,4,output_method2,[[2,true]]);
-    output_method2 = Sim.transformStateVectorWith2x2(Sim.X,3,4,output_method2,[[1,true]]);
-    output_method2 = Sim.transformStateVectorWith2x2(Sim.H,1,4,output_method2,[]);
+    output_method2 = Sim.qubitWiseMultiply(Sim.H,0,4,input,[]);
+    output_method2 = Sim.qubitWiseMultiply(Sim.SX,1,4,output_method2,[]);
+    output_method2 = Sim.qubitWiseMultiply(Sim.SX,3,4,output_method2,[]);
+    output_method2 = Sim.qubitWiseMultiply(Sim.X,2,4,output_method2,[[0,true]]);
+    output_method2 = Sim.qubitWiseMultiply(Sim.X,1,4,output_method2,[[2,true]]);
+    output_method2 = Sim.qubitWiseMultiply(Sim.X,3,4,output_method2,[[1,true]]);
+    output_method2 = Sim.qubitWiseMultiply(Sim.H,1,4,output_method2,[]);
     if ( verbose ) console.log(StringUtil.concatMultiline(
         "Difference found using a better method: ",
         CMatrix.diff(output,output_method2).transpose().toString()
