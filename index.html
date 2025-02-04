@@ -933,7 +933,7 @@ class Sim { // Simulator
     // There are other things about it that are confusing which I haven't
     // fully analyzed.  Finally, Viamontes et al.'s version has no support for control bits.
     //
-    static transformStateVectorWith2x2(
+    static qubitWiseMultiply(
         m, // a 2x2 matrix
         i, // index of wire on which to apply m
         n, // number of qubits in the circuit
