@@ -220,6 +220,9 @@ class Complex {
     copy() {
         return new Complex( this._r, this._i );
     }
+    negate() {
+        return new Complex( - this._r, - this._i );
+    }
     conjugate() {
         return new Complex( this._r, - this._i );
     }
@@ -671,6 +674,29 @@ class Sim { // Simulator
         let phaseChange = new Complex( Math.cos(angleInRadians), Math.sin(angleInRadians) );
         return CMatrix.create([[1,0],[0,phaseChange]]);
     }
+    // Pauli X exponential, equal to X^k where k is the input parameter
+    static XE( parameter ) {
+        let angleInRadians = parameter * Math.PI;
+        let phaseChange = new Complex( 0.5 * Math.cos(angleInRadians), 0.5 * Math.sin(angleInRadians) );
+        let a = Complex.sum( new Complex(0.5,0), phaseChange );
+        let b = Complex.diff( new Complex(0.5,0), phaseChange );
+        return CMatrix.create([[a,b],[b,a]]);
+    }
+    // Pauli Y exponential, equal to Y^k where k is the input parameter
+    static YE( parameter ) {
+        let angleInRadians = parameter * Math.PI;
+        let phaseChange = new Complex( 0.5 * Math.cos(angleInRadians), 0.5 * Math.sin(angleInRadians) );
+        let a = Complex.sum( new Complex(0.5,0), phaseChange );
+        let b = Complex.mult( new Complex(0,1), Complex.diff( phaseChange, new Complex(0.5,0) ) );
+        let c = b.negate();
+        return CMatrix.create([[a,b],[c,a]]);
+    }
+    // Pauli Z exponential, equal to Z^k where k is the input parameter
+    static ZE( parameter ) {
+        let angleInRadians = parameter * Math.PI;
+        let phaseChange = new Complex( Math.cos(angleInRadians), Math.sin(angleInRadians) );
+        return CMatrix.create([[1,0],[0,phaseChange]]);
+    }
     // Returns a 2x2 matrix that rotates around an axis of the Bloch sphere.
     // With a 180 degree angle, this is equivalent to a Pauli X gate (also called NOT gate)
     // but differs by a global phase.
@@ -771,6 +797,36 @@ class Sim { // Simulator
         let k = angleInRadians / Math.sqrt( magSquared );
         return Sim.RotFreeAxis( ax * k, ay * k, az * k );
     }
+
+    // BEGIN: These are for non-standard gates proposed by McGuffin
+    //
+    // Generalized Z
+    static Z_G( angle1InDegrees, angle2InDegrees ) {
+        let angle1InRadians = angle1InDegrees / 180.0 * Math.PI;
+        let angle2InRadians = angle2InDegrees / 180.0 * Math.PI;
+        let phaseChange1 = new Complex( Math.cos(angle1InRadians), Math.sin(angle1InRadians) );
+        let phaseChange2 = new Complex( Math.cos(angle2InRadians), Math.sin(angle2InRadians) );
+        return CMatrix.create([[phaseChange2,0],[0,phaseChange1]]);
+    }
+    // Generalized Y
+    static Y_G( angle1InDegrees, angle2InDegrees ) {
+        let angle1InRadians = angle1InDegrees / 180.0 * Math.PI;
+        let angle2InRadians = angle2InDegrees / 180.0 * Math.PI;
+        let phaseChange1 = new Complex( Math.cos(angle1InRadians), Math.sin(angle1InRadians) );
+        let phaseChange2 = new Complex( Math.cos(angle2InRadians), Math.sin(angle2InRadians) );
+        return CMatrix.create([[0,phaseChange1],[phaseChange2,0]]);
+    }
+    // Generalized Hadamard
+    static H_G( angle1InDegrees, angle2InDegrees ) {
+        let angle1InRadians = angle1InDegrees / 180.0 * Math.PI;
+        let angle2InRadians = angle2InDegrees / 180.0 * Math.PI;
+        let phaseChange1 = new Complex( Math.SQRT1_2*Math.cos(angle1InRadians), Math.SQRT1_2*Math.sin(angle1InRadians) );
+        let phaseChange2 = new Complex( Math.SQRT1_2*Math.cos(angle2InRadians), Math.SQRT1_2*Math.sin(angle2InRadians) );
+        return CMatrix.create([[ phaseChange2, phaseChange1 ],[ phaseChange2, phaseChange1.negate() ]]);
+    }
+    //
+    // END
+
     // Returns a matrix for swapping wires i and j in a quantum circuit with n wires.
     // i and j are zero-based, i.e., they are between 0 and (n-1).
     // The matrix that is returned has size (2**n)x(2**n)
