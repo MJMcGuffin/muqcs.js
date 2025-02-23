@@ -428,6 +428,12 @@ $Z^k = R_z(k \pi) GlobalPhase(k \pi/2) = Phase(k \pi)$
 \begin{bmatrix} 1 & 0 \\ 0 & e^{i k \pi} \end{bmatrix} = \begin{bmatrix} e^{-i k \pi/2} & 0 \\ 0 & e^{i k \pi/2} \end{bmatrix} e^{i k \pi/2}
 ```
 
+$H^k$
+```math
+\begin{bmatrix} (2+\sqrt{2})/4 + e^{i k \pi} (2-\sqrt{2})/4 & 1/(2 \sqrt{2}) - e^{i k \pi}/(2 \sqrt{2}) \\ 1/(2 \sqrt{2}) - e^{i k \pi}/(2 \sqrt{2}) & (2-\sqrt{2})/4 + e^{i k \pi} (2+\sqrt{2})/4 \end{bmatrix}
+```
+
+
 ## Non-standard operations proposed by McGuffin
 
 ### Generalized Z
