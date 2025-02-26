@@ -441,7 +441,7 @@ $H^k$
 #### Definition:
 
 ```math
-Z_G(a,b) = X \cdot Z^{b/\pi} \cdot X \cdot Z^{a/\pi} = \begin{bmatrix} e^{i b} & 0 \\ 0 & e^{i a} \end{bmatrix}
+Z_G(a,b) = X \cdot Z^{a/\pi} \cdot X \cdot Z^{b/\pi} = \begin{bmatrix} e^{i a} & 0 \\ 0 & e^{i b} \end{bmatrix}
 ```
 
 #### Special cases:
@@ -451,19 +451,19 @@ I = Z_G(0,0)
 ```
 
 ```math
-Z = Z_G(\pi,0)
+Z = Z_G(0,\pi)
 ```
 
 ```math
-S^{\pm 1} = \sqrt{Z}^{\pm 1} = Z_G(\pm \pi/2, 0)
+S^{\pm 1} = \sqrt{Z}^{\pm 1} = Z_G(0, \pm \pi/2)
 ```
 
 ```math
-T^{\pm 1} = \sqrt[4]{Z}^{\pm 1} = Z_G(\pm \pi/4, 0)
+T^{\pm 1} = \sqrt[4]{Z}^{\pm 1} = Z_G(0, \pm \pi/4)
 ```
 
 ```math
-Phase(a) = Z_G(a,0)
+Phase(a) = Z_G(0,a)
 ```
 
 ```math
@@ -471,7 +471,7 @@ GlobalPhase(a) = Z_G(a,a)
 ```
 
 ```math
-R_z(a) =  Z_G(a/2,-a/2)
+R_z(a) =  Z_G(-a/2,a/2)
 ```
 
 #### Identities:
@@ -485,7 +485,7 @@ Z_G(a,b) Z_G(c,d) = Z_G(a+c,b+d)
 #### Definition:
 
 ```math
-Y_G(a,b) = X \cdot Z_G(a,b) = Z^{b/\pi} \cdot X \cdot Z^{a/\pi} = \begin{bmatrix} 0 & e^{i a} \\ e^{i b} & 0 \end{bmatrix}
+Y_G(a,b) = X \cdot Z_G(a,b) = Z^{a/\pi} \cdot X \cdot Z^{b/\pi} = \begin{bmatrix} 0 & e^{i b} \\ e^{i a} & 0 \end{bmatrix}
 ```
 
 #### Special cases:
@@ -495,7 +495,7 @@ X = Y_G(0,0)
 ```
 
 ```math
-Y = Y_G(-\pi/2,\pi/2)
+Y = Y_G(\pi/2,-\pi/2)
 ```
 
 #### Identities:
@@ -513,7 +513,7 @@ Y_G(a,b) Z_G(c,d) = Z_G(d,c) Y_G(a,b) = Y_G(a+c,b+d)
 #### Definition:
 
 ```math
-H_G(a,b) = H \cdot Z_G(a,b) = \frac{1}{\sqrt{2}} \begin{bmatrix} e^{i b} & e^{i a} \\ e^{i b} & -e^{i a} \end{bmatrix}
+H_G(a,b) = H \cdot Z_G(a,b) = \frac{1}{\sqrt{2}} \begin{bmatrix} e^{i a} & e^{i b} \\ e^{i a} & -e^{i b} \end{bmatrix}
 ```
 
 #### Special case:
