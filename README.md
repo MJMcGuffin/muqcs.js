@@ -596,7 +596,7 @@ It's useful to be able to check matrix math using a symbolic math package like M
     (* Example computation: we test if X == HZH, by checking if the below expression yields zero *)
     X - H.Z.H // Chop
 
-    (* Another example computation: we test if H^k == (Y^-0.25) (X^k) (Y^0.25), by checking of the below expression yields zero *)
+    (* Another example computation: we test if H^k == (Y^-0.25) (X^k) (Y^0.25), by checking if the below expression yields zero *)
     HE[k] - invSSY . XE[k] . SSY  // FullSimplify // Chop
 
 
