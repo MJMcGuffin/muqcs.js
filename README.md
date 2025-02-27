@@ -527,3 +527,77 @@ H = H_G(0,0)
 ```math
 H_G(a,a) H_G(b,b) = Z_G(a+b,a+b)
 ```
+
+## Example code for Mathematica / Wolfram Language / wolframcloud.com :
+
+It's useful to be able to check matrix math using a symbolic math package like Mathematica.  Here is some code to get started:
+
+    (* identity *)
+    (* id = {{1, 0}, {0, 1}}; *)
+    id = IdentityMatrix[2];
+
+    (* Hadamard *)
+    H = ((1/(2^0.5))*{{1, 1}, {1, -1}});
+
+    (* Pauli *)
+    X={{0,1},{1, 0}};
+    Y={{0,-I},{I, 0}};
+    Z={{1,0},{0, -1}};
+
+    (* Square roots of Pauli: X^0.5, Y^0.5, Z^0.5
+       SX, SY, SZ mean Square root of X, Y, Z
+    *)
+    SX = (0.5 * {{1+I, 1-I}, {1-I, 1+I}});
+    SY = (0.5 * {{1+I, -1-I}, {1+I, 1+I}});
+    SZ = ({{1, 0}, {0, I}});
+    (* inverses X^-0.5, Y^-0.5, Z^-0.25 *)
+    invSX = (0.5 * {{1-I, 1+I}, {1+I, 1-I}});
+    invSY = (0.5 * {{1-I, 1-I}, {-1+I, 1-I}}) ;
+    invSZ = ({{1, 0}, {0, -I}});
+
+    (* fourth roots and inverses *)
+    SSX = (0.5 * {{1+E^(I*Pi/4),1-E^(I*Pi/4)},{1-E^(I*Pi/4),1+E^(I*Pi/4)}});
+    SSY = (0.5 * {{1+E^(I*Pi/4),I*(E^(I*Pi/4)-1)},{I*(1-E^(I*Pi/4)),1+E^(I*Pi/4)}});
+    SSZ = ({{1,0},{0,E^(I*Pi/4)}});
+    invSSX = {{(2+2^0.5)/4-I/(2*2^0.5),(2-2^0.5)/4+I/(2*2^0.5)},{(2-2^0.5)/4+I/(2*2^0.5),(2+2^0.5)/4-I/(2*2^0.5)}};
+    invSSY = {{(2+2^0.5)/4-I/(2*2^0.5),1/(2*2^0.5)-I*(2-2^0.5)/4},{-1/(2*2^0.5)+I*(2-2^0.5)/4,(2+2^0.5)/4-I/(2*2^0.5)}};
+    invSSZ = ({{1,0},{0,E^(-I*Pi/4)}});
+
+    GlobalPhase[\[Theta]_] := E^(I*\[Theta]) * IdentityMatrix[2];
+
+    Phase[\[Theta]_] := {{1,0},{0,E^(I*\[Theta])}};
+
+    (* Pauli exponentials X^k, Y^k, Z^k *)
+    XE[k_] := (0.5 * {{1+E^(I*k*Pi), 1-E^(I*k*Pi)}, {1-E^(I*k*Pi), 1+E^(I*k*Pi)}});
+    YE[k_] := (0.5 * {{1+E^(I*k*Pi), I*(E^(I*k*Pi)-1)}, {I*(1-E^(I*k*Pi)), 1+E^(I*k*Pi)}});
+    ZE[k_] := ({{1, 0}, {0,E^(I*k*Pi)}});
+
+    (* rotation *)
+    RX[\[Theta]_] := {{Cos[\[Theta]/2],-I*Sin[\[Theta]/2]},{-I*Sin[\[Theta]/2],Cos[\[Theta]/2]}};
+    RY[\[Theta]_] := {{Cos[\[Theta]/2],-Sin[\[Theta]/2]},{Sin[\[Theta]/2],Cos[\[Theta]/2]}};
+    RZ[\[Theta]_] := {{E^(-I*\[Theta]/2),0},{0,E^(I*\[Theta]/2)}};
+    (* alternative definitions:
+    RXalt[\[Theta]_] := XE[\[Theta]/Pi] . GlobalPhase[-\[Theta]/2];
+    RYalt[\[Theta]_] := YE[\[Theta]/Pi] . GlobalPhase[-\[Theta]/2];
+    RZalt[\[Theta]_] := ZE[\[Theta]/Pi] . GlobalPhase[-\[Theta]/2];
+    *)
+
+    (* Hadamard exponential H^k *)
+    HE[k_] := {
+      { (2+2^0.5)/4 + (E^(I*k*Pi))*(2-2^0.5)/4 , 1/(2*2^0.5) - (E^(I*k*Pi))/(2*2^0.5) },
+      { 1/(2*2^0.5) - (E^(I*k*Pi))/(2*2^0.5)   , (2-2^0.5)/4 + (E^(I*k*Pi))*(2+2^0.5)/4  }
+    };
+
+    (* generalized gates *)
+    Zgeneralized[a_,b_] := {{E^(I*a),0},{0,E^(I*b)}};
+    Ygeneralized[a_,b_] := {{0,E^(I*b)},{E^(I*a),0}};
+    Hgeneralized[a_,b_] := ((1/2^0.5)*{{E^(I*a),E^(I*b)},{E^(I*a),-E^(I*b)}});
+
+    (* Example computation: we test if X == HZH, by checking if the below expression yields zero *)
+    X - H.Z.H // Chop
+
+    (* Another example computation: we test if H^k == (Y^-0.25) (X^k) (Y^0.25), by checking of the below expression yields zero *)
+    HE[k] - invSSY . XE[k] . SSY  // FullSimplify // Chop
+
+
+
