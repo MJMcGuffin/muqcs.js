@@ -806,7 +806,7 @@ class Sim { // Simulator
         let angle2InRadians = angle2InDegrees / 180.0 * Math.PI;
         let phaseChange1 = new Complex( Math.cos(angle1InRadians), Math.sin(angle1InRadians) );
         let phaseChange2 = new Complex( Math.cos(angle2InRadians), Math.sin(angle2InRadians) );
-        return CMatrix.create([[phaseChange2,0],[0,phaseChange1]]);
+        return CMatrix.create([[phaseChange1,0],[0,phaseChange2]]);
     }
     // Generalized Y
     static Y_G( angle1InDegrees, angle2InDegrees ) {
@@ -814,7 +814,7 @@ class Sim { // Simulator
         let angle2InRadians = angle2InDegrees / 180.0 * Math.PI;
         let phaseChange1 = new Complex( Math.cos(angle1InRadians), Math.sin(angle1InRadians) );
         let phaseChange2 = new Complex( Math.cos(angle2InRadians), Math.sin(angle2InRadians) );
-        return CMatrix.create([[0,phaseChange1],[phaseChange2,0]]);
+        return CMatrix.create([[0,phaseChange2],[phaseChange1,0]]);
     }
     // Generalized Hadamard
     static H_G( angle1InDegrees, angle2InDegrees ) {
@@ -822,7 +822,7 @@ class Sim { // Simulator
         let angle2InRadians = angle2InDegrees / 180.0 * Math.PI;
         let phaseChange1 = new Complex( Math.SQRT1_2*Math.cos(angle1InRadians), Math.SQRT1_2*Math.sin(angle1InRadians) );
         let phaseChange2 = new Complex( Math.SQRT1_2*Math.cos(angle2InRadians), Math.SQRT1_2*Math.sin(angle2InRadians) );
-        return CMatrix.create([[ phaseChange2, phaseChange1 ],[ phaseChange2, phaseChange1.negate() ]]);
+        return CMatrix.create([[ phaseChange1, phaseChange2 ],[ phaseChange1, phaseChange2.negate() ]]);
     }
     //
     // END
@@ -2110,9 +2110,14 @@ class Sim { // Simulator
         // and is given in Leone, Oliviero, Hamma (2022) "Stabilizer Rényi Entropy", page 2, column 2.
         // In the bloch sphere, it's located at (phase=45 degrees, theta=90 degrees)
         Sim.ket_H_magic_state_2 = CMatrix.naryMult( [ Sim.SSZ, Sim.H, Sim.ketZero ] );
+
         // This is ≈ [ 0.888, 0.325+0.325i ]^T
         // and is given in Bravyi + Kitaev (2004), "Universal quantum computation with ideal Clifford gates and noisy ancillas", page 5, equation 4
-        // In the bloch sphere, it's located at (phase=45 degrees, theta≈54.7 degrees)
+        // In the bloch sphere, it's located at (phase=45 degrees, theta≈54.735610 degrees)
+        // where theta = pi/2 - arctan(1/(2^0.5)) radians
+        // Other ways to compute the same state (ignoring differences in global phase):
+        //     CMatrix.naryMult( [ Sim.RZ(45), Sim.RY(54.735610), Sim.ketZero ] );
+        //     CMatrix.naryMult( [ Sim.ZE(0.25), Sim.YE(0.304087), Sim.ketZero ] );
         let angle_beta = 0.5 * Math.acos(1/Math.sqrt(3));
         let sine_beta_over_root2 = Math.SQRT1_2 * Math.sin(angle_beta);
         Sim.ket_T_magic_state = CMatrix.createColVector([ Math.cos(angle_beta), new Complex(sine_beta_over_root2,sine_beta_over_root2) ]);
