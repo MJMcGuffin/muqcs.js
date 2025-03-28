@@ -1154,6 +1154,7 @@ class Sim { // Simulator
     //
     static partialTrace(
         n, // number of qubits
+
         inputMatrix, // a matrix of size (2**n)x(2**n)
         isInputMatrixHermitian, // If true (which it should be if we are dealing with a density matrix), then this enables the partial trace to save time.
 
@@ -1267,6 +1268,70 @@ class Sim { // Simulator
             }
         }
         return outputMatrix;
+    }
+
+    // returns an array of n 2x2 matrices, where element i in the array is the 2x2 reduced density matrix for qubit i, 0 <= i < n
+    static computeAll2x2ReducedDensityMatrices(
+        n, // number of qubits
+        stateVector // (2^n)x1 column vector
+    ) {
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.computeAll2x2ReducedDensityMatrices(): state vector has invalid size" );
+        let returnValue = [];
+        let reducedDensityMatrix = null;
+        for ( let i = 0; i < n; i ++ ) {
+            reducedDensityMatrix = Sim.partialTrace(
+                n, // number of qubits
+                null, // full density matrix
+                true, // is hermitian ?
+                stateVector,
+                [ i ],
+                false
+            );
+            Util.assert( reducedDensityMatrix._rows===2 && reducedDensityMatrix._cols===2, "Sim.computeAll2x2ReducedDensityMatrices(): unexpected size of matrix" );
+            returnValue.push( reducedDensityMatrix );
+        }
+        return returnValue;
+    }
+    static indexInArrayOfAllPairs(i,j) {
+        if ( i===j || i<0 || j<0 )
+            return -1;
+        if ( i > j ) {
+            // swap, to ensure i < j
+            let tmp = j;
+            j = i;
+            i = tmp;
+        }
+        return j*(j-1)/2+i;
+    }
+    // Returns an array of (n(n-1)/2) 4x4 matrices,
+    // where the 4x4 reduced density matrix for qubits i,j (0 <= i < j < n)
+    // has index given by indexInArrayOfAllPairs(i,j)
+    static computeAll4x4ReducedDensityMatrices(
+        n, // number of qubits
+        stateVector // (2^n)x1 column vector
+    ) {
+        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.computeAll4x4ReducedDensityMatrices(): state vector has invalid size" );
+        Util.assert( Sim.indexInArrayOfAllPairs(0,1)===0 && Sim.indexInArrayOfAllPairs(1,0)===0, "Sim.computeAll4x4ReducedDensityMatrices(): unexpected condition 1" );
+        let returnValue = [];
+        let reducedDensityMatrix = null;
+
+        for ( let j = 1; j < n; j ++ ) {
+            for ( let i = 0; i < j; i ++ ) {
+                Util.assert( Sim.indexInArrayOfAllPairs(i,j)===returnValue.length, "Sim.computeAll4x4ReducedDensityMatrices(): unexpected condition 2" );
+                reducedDensityMatrix = Sim.partialTrace(
+                    n, // number of qubits
+                    null, // full density matrix
+                    true, // is hermitian ?
+                    stateVector,
+                    [ i, j ],
+                    false
+                );
+                Util.assert( reducedDensityMatrix._rows===4 && reducedDensityMatrix._cols===4, "Sim.computeAll4x4ReducedDensityMatrices(): unexpected size of matrix" );
+                returnValue.push( reducedDensityMatrix );
+            }
+        }
+        Util.assert( Sim.indexInArrayOfAllPairs(n-2,n-1)===returnValue.length-1 && Sim.indexInArrayOfAllPairs(n-1,n-2)===returnValue.length-1, "Sim.computeAll4x4ReducedDensityMatrices(): unexpected condition 3" );
+        return returnValue;
     }
 
     // Returns a matrix of size (2**n)x(2**n)
