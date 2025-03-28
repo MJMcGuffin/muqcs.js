@@ -65,7 +65,7 @@ Or go to the <a href="https://github.com/MJMcGuffin/muqcs">github repository</a>
 // but I found it instructive to try to implement both and have a global flag
 // to switch between the two.
 //
-let usingTextbookConvention = false;
+let usingTextbookConvention = false; // note that the code has not been fully tested with usingTextbookConvention = true
 
 
 let defaultDecimalPrecision = 3;
@@ -950,8 +950,19 @@ class Sim { // Simulator
         return m3;
     }
 
-    // Returns a new state vector.
-    // Avoids computing an explicit matrix of size (2**n)x(2**n), saving a lot of memory and time.
+    // Returns the product of (I⊗... ⊗I⊗U⊗I⊗...⊗I) and |stateVector>,
+    // where I is the 2×2 identity matrix, U is a given 2×2 matrix,
+    // |stateVector> is a (2^n)×1 column vector, and the return value is
+    // another column vector of the same size.
+    // The tensor product in parentheses has n factors, and would
+    // result in a matrix of size (2^n)×(2^n) if evaluated explicitly.
+    // U is at a position in the tensor product given by i_w,
+    // with i_w=0 or i_w=n-1 indicating that U
+    // is the right-most or left-most factor, respectively.
+    // The algorithm avoids explicitly computing the tensor product
+    // in parentheses, and takes O(2^n) time.
+    // Control bits and anti-control bits limit the effect of U
+    // to a subset of the amplitudes in |stateVector>.
     //
     // Imagine the state vector partitioned into contiguous blocks of equal size,
     // with each block partitioned into two half blocks.
@@ -990,15 +1001,16 @@ class Sim { // Simulator
     // fully analyzed.  Finally, Viamontes et al.'s version has no support for control bits.
     //
     static qubitWiseMultiply(
-        m, // a 2x2 matrix
-        i, // index of wire on which to apply m
-        n, // number of qubits in the circuit
-        stateVector, // a matrix of size (2**n)x1, i.e. a column vector
+        U, // a 2x2 matrix
+        i_w, // index of wire on which to apply U, 0 <= i_w <= n-1
+        n, // number of qubits in the circuit, 1 <= n
+        stateVector, // the state vector to transform; a matrix of size (2**n)x1, i.e. a column vector
         listOfControlBits = [] // a list of pairs of the form [wire_index, flag] where 0<=wire_index<n and flag is true for a control bit and false for an anti-control bit
     ) {
-        Util.assert( 0<=i && i<n, "Sim.qubitWiseMultiply(): invalid index" );
-        Util.assert( m._rows===m._cols && m._rows===2, "Sim.qubitWiseMultiply(): invalid size" );
-        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.qubitWiseMultiply(): state vector has invalid size" );
+        let sizeOfStateVector = 1 << n;
+        Util.assert( 0<=i_w && i_w<n, "Sim.qubitWiseMultiply(): invalid index" );
+        Util.assert( U._rows===U._cols && U._rows===2, "Sim.qubitWiseMultiply(): invalid size" );
+        Util.assert( stateVector._rows===sizeOfStateVector && stateVector._cols===1, "Sim.qubitWiseMultiply(): state vector has invalid size" );
 
         let inclusionMask = 0;
         let desiredValueMask = 0;
@@ -1013,48 +1025,54 @@ class Sim { // Simulator
         }
 
         if ( usingTextbookConvention )
-            i = n-1 - i;
+            i_w = n-1 - i_w;
         let tempVector = new CMatrix(2,1);
-        let sizeOfHalfBlock = 1 << i; // could be 1, 2, 4, ...
-        let sizeOfBlock = sizeOfHalfBlock * 2; // could be 2, 4, 8 ...
+        let sizeOfHalfBlock = 1 << i_w; // could be 1, 2, 4, ...
+        let sizeOfBlock = sizeOfHalfBlock << 1; // could be 2, 4, 8 ...
         let result = stateVector.copy();
-        for ( let indexOfStartOfBlock = 0; indexOfStartOfBlock < stateVector._rows; indexOfStartOfBlock += sizeOfBlock ) {
+        for ( let indexOfStartOfBlock = 0; indexOfStartOfBlock < sizeOfStateVector; indexOfStartOfBlock += sizeOfBlock ) {
             for ( let offsetWithinBlock = 0; offsetWithinBlock < sizeOfHalfBlock; offsetWithinBlock ++ ) {
                 Util.assert( indexOfStartOfBlock | offsetWithinBlock === indexOfStartOfBlock + offsetWithinBlock, "Sim.qubitWiseMultiply(): unexpected numbers" );
-                let stateIndex1 = indexOfStartOfBlock | offsetWithinBlock;
-                if ( (stateIndex1 & inclusionMask) !== desiredValueMask )
+                let i1 = indexOfStartOfBlock | offsetWithinBlock; // equivalent to a sum
+                if ( (i1 & inclusionMask) !== desiredValueMask )
                     continue;
 
-                let stateIndex2 = stateIndex1 + sizeOfHalfBlock;
+                Util.assert( i1 | sizeOfHalfBlock === i1 + sizeOfHalfBlock, "Sim.qubitWiseMultiply(): unexpected numbers" );
+                let i2 = i1 | sizeOfHalfBlock; // equivalent to a sum
 
                 // Collect inputs into a small contiguous vector.
-                tempVector.set( 0, 0, stateVector.get( stateIndex1, 0 ) );
-                tempVector.set( 1, 0, stateVector.get( stateIndex2, 0 ) );
+                tempVector.set( 0, 0, stateVector.get( i1, 0 ) );
+                tempVector.set( 1, 0, stateVector.get( i2, 0 ) );
 
-                let transformedVector = CMatrix.mult( m, tempVector );
+                let transformedVector = CMatrix.mult( U, tempVector );
 
                 // Scatter outputs.
-                result.set( stateIndex1, 0, transformedVector.get( 0, 0 ) );
-                result.set( stateIndex2, 0, transformedVector.get( 1, 0 ) );
+                result.set( i1, 0, transformedVector.get( 0, 0 ) );
+                result.set( i2, 0, transformedVector.get( 1, 0 ) );
             }
         }
         return result;
     }
-    // Returns a new state vector.
-    // Avoids computing an explicit swap matrix of size (2**n)x(2**n), saving a lot of memory and time.
-    static transformStateVectorWithSwap(
-        i, // index of 1st wire on which to apply the swap
-        j, // index of 2nd wire on which to apply the swap
-        n, // number of qubits in the circuit
-        stateVector, // a matrix of size (2**n)x1, i.e. a column vector
+
+    // Returns the given state vector |stateVector> after swapping wires i and j.
+    // In other words, implements a SWAP gate on qubits i and j.
+    // Avoids computing an explicit swap matrix of size (2**n)x(2**n), saving much memory and time.
+    // Takes O(2^n) time.
+    // Control bits and anti-control bits limit the effect of the SWAP
+    // to a subset of the amplitudes in |stateVector>.
+    static applySwap(
+        i_w, j_w, // indices of wires to swap, 0 <= i_w <= n-1, 0 <= j_w <= n-1
+        n, // number of qubits in the circuit, 1 <= n
+        stateVector, // the state vector to transform; a matrix of size (2**n)x1, i.e. a column vector
         listOfControlBits = [] // a list of pairs of the form [wire_index, flag] where 0<=wire_index<n and flag is true for a control bit and false for an anti-control bit
     ) {
-        Util.assert( 0<=i && i<n && 0<=j && j<n, "Sim.transformStateVectorWithSwap(): invalid indices" );
-        Util.assert( i!=j, "Sim.transformStateVectorWithSwap(): indices are unexpectedly equal" );
-        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.transformStateVectorWithSwap(): state vector has invalid size" );
+        let sizeOfStateVector = 1 << n;
+        Util.assert( 0<=i_w && i_w<n && 0<=j_w && j_w<n, "Sim.applySwap(): invalid indices" );
+        Util.assert( i_w!=j_w, "Sim.applySwap(): indices are unexpectedly equal" );
+        Util.assert( stateVector._rows===sizeOfStateVector && stateVector._cols===1, "Sim.applySwap(): state vector has invalid size" );
 
         let result = stateVector.copy();
-        if ( i === j ) {
+        if ( i_w === j_w ) {
             return result;
         }
 
@@ -1071,141 +1089,55 @@ class Sim { // Simulator
         }
 
         if ( usingTextbookConvention ) {
-            i = n-1 - i;
-            j = n-1 - j;
+            i_w = n-1 - i_w;
+            j_w = n-1 - j_w;
         }
-        if ( i > j ) {
-            let tmp = i;
-            i = j;
-            j = tmp;
+        if ( i_w > j_w ) {
+            let tmp = i_w;
+            i_w = j_w;
+            j_w = tmp;
         }
-        let numStates = 2 ** n;
 
         // define stuff for operating on bits
-        let mask_i = 1 << i;
-        let mask_j = 1 << j;
-        let antimask = ~( mask_i | mask_j );
+        let antimask_i = ~( 1 << i_w );
+        let mask_j = 1 << j_w;
 
-        for ( let r1 = 0; r1 < numStates; ++r1 ) {
-            if ( (r1 & inclusionMask) !== desiredValueMask )
+        for ( let k = 0; k < sizeOfStateVector; k ++ ) {
+            if ( (k & inclusionMask) !== desiredValueMask )
                 continue;
 
-            let r2 = r1;
+            let ithBitOfK = (k >> i_w) & 1;
+            if ( ithBitOfK===1 ) {
+                let jthBitOfK = (k >> j_w) & 1;
 
-            let ithBit = (r2 >> i) & 1;
-            let jthBit = (r2 >> j) & 1;
-            // If the ith and jth bits are both 0 or both 1, we don't need to swap rows.
-            // If the two bits have different values, we do want to swap rows r1 and r2.
-            // But we don't want to swap those rows twice.
-            // So we only swap when we encounter the case where the ith bit is 1 and the jth is 0.
-            if ( ithBit===1 && jthBit===0 ) {
-                r2 &= antimask; // turns off bits i and j
-                r2 |= mask_j; // turns on bit j
+                // If the ith and jth bits are both 0 or both 1, we don't need to swap rows.
+                // If the two bits have different values, we do want to swap rows k1 and k2.
+                // But we don't want to swap those rows twice.
+                // So we only swap when we encounter the case where the ith bit is 1 and the jth is 0.
 
-                result.set(r2,0,stateVector.get(r1,0));
-                result.set(r1,0,stateVector.get(r2,0));
+                if ( jthBitOfK===0 ) {
+                    let k2 = ( k & antimask_i ) | mask_j; // turn off bit i_w, turn on bit j_w
+                    // swap the (k)th and (k2)th amplitudes
+                    result.set(k2,0,stateVector.get(k,0));
+                    result.set(k,0,stateVector.get(k2,0));
+                }
             }
         }
         return result;
     }
 
-    // This is experimental
-    static measurement(
-        n, // number of qubits in the circuit
-        stateVector, // a matrix of size (2**n)x1, i.e. a column vector
-        i // index of qubit to measure
-    ) {
-        Util.assert( 0<=i && i<n, "Sim.measurement(): invalid indices" );
-        Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.measurement(): state vector has invalid size" );
-
-        let vectorSize = 2 ** n;
-        let probability_0 = 0;
-        let probability_1 = 0;
-        let mask_i = 1 << i;
-        let mask_low = mask_i - 1;
-        let mask_high = (vectorSize-1) - mask_i - mask_low;
-        for ( let row = 0; row < vectorSize; ++row ) {
-            let prob = stateVector.get(row,0).mag()**2;
-            if ( row & mask_i ) {
-                probability_1 += prob;
-            }
-            else {
-                probability_0 += prob;
-            }
-        }
-        let scaleFactor_0 = 1.0 / Math.sqrt( probability_0 );
-        let scaleFactor_1 = 1.0 / Math.sqrt( probability_1 );
-        let new_stateVector_0 = new CMatrix( vectorSize/2, 1 );
-        let new_stateVector_1 = new CMatrix( vectorSize/2, 1 );
-        for ( let row = 0; row < vectorSize; ++row ) {
-            let new_row = ((row & mask_high)>>1) | (row & mask_low);
-            if ( row & mask_i ) {
-                let new_amplitude = Complex.mult( stateVector.get(row,0), scaleFactor_1 );
-                new_stateVector_1.set( new_row, 0, new_amplitude );
-            }
-            else {
-                let new_amplitude = Complex.mult( stateVector.get(row,0), scaleFactor_0 );
-                new_stateVector_0.set( new_row, 0, new_amplitude );
-            }
-        }
-        // Each of these density matrices is pure
-        let new_densityMatrix_0 = CMatrix.mult( new_stateVector_0, new_stateVector_0.conjugateTranspose() );
-        let new_densityMatrix_1 = CMatrix.mult( new_stateVector_1, new_stateVector_1.conjugateTranspose() );
-
-        console.log( "Probability of measuring 0: " + probability_0 );
-        console.log( "Pure state that would result:" );
-        console.log( StringUtil.concatMultiline( stateVector.toString(), ", ", new_densityMatrix_0.toString() ) );
-        console.log( "Probability of measuring 1: " + probability_1 );
-        console.log( "Pure state that would result:" );
-        console.log( StringUtil.concatMultiline( stateVector.toString(), ", ", new_densityMatrix_1.toString() ) );
-
-        // This density matrix is mixed, in general
-        let new_densityMatrix = CMatrix.sum(
-            CMatrix.mult( probability_0, new_densityMatrix_0 ),
-            CMatrix.mult( probability_1, new_densityMatrix_1 )
-        );
-
-        console.log( "Mixed density matrix:" );
-        console.log( new_densityMatrix.toString() );
-
-        // Now, as an alternative way to compute the measurement, in a way that should be equivalent,
-        // we model the state of an observer as an extra qubit that gets entangled with the qubit to measure,
-        // via a CNOT gate.
-        // Then we trace out the observer and the measured qubits.
-        // We should be left with the same mixed state.
-
-        // The new state vector allows for an extra qubit with index n
-        // This new qubit is assumed to be initialized to state |0>
-        let alt_newStateVector = CMatrix.tensor( Sim.ketZero, stateVector );
-
-        // Apply a CNOT gate to entangle the qubit that was to be measured with the newly added qubit
-        alt_newStateVector = Sim.qubitWiseMultiply(Sim.X,n,n+1,alt_newStateVector,[[i,true]]);
-
-        let alt_newDensityMatrix = CMatrix.mult( alt_newStateVector, alt_newStateVector.conjugateTranspose() );
-
-        // trace out 2 qubits and keep all the rest
-        alt_newDensityMatrix = Sim.computeReducedDensityMatrixForOneLessQubit( n, n+1, alt_newDensityMatrix );
-        alt_newDensityMatrix = Sim.computeReducedDensityMatrixForOneLessQubit( i, n  , alt_newDensityMatrix );
-
-        console.log( "Alternative way to compute the mixed density matrix:" );
-        console.log( alt_newDensityMatrix.toString() );
-
-        console.log( "Difference:" ); // should output a matrix full of zeros
-        console.log( CMatrix.diff( new_densityMatrix, alt_newDensityMatrix).toString() );
-    }
-
     // Returns the given number i with its bits rearranged,
-    // so that the 0th bit of i is in position a[0],
-    // the 1st bit of i is in position a[1],
-    // etc.
+    // so that the 0th (least significant) bit of i is in position a[0],
+    // the 1st bit of i is in position a[1], etc.
     // Negative positions in the array a are ignored.
-    // For example, rearrangeBits(i,[1,0]) returns the two least-significant bits of i, swapped, and none of the other bits.
-    // As another example, rearrangeBits(i,[0,1,2])) returns only the three least-significant bits of i, with their positions unchanged.
-    // As another example, rearrangeBits(i,[3,0,1,2])) returns only the four least-significant bits of i, shifted left (to one position more significant)
-    // and wrapped around.
+    // Examples:
+    // rearrangeBits(i,[1,0]) returns the two least-significant bits of i, swapped, and none of the other bits.
+    // rearrangeBits(i,[0,1,2])) returns only the three least-significant bits of i, with their positions unchanged.
+    // rearrangeBits(i,[3,0,1,2])) returns only the four least-significant bits of i,
+    // shifted left (to one position more significant) and wrapped around.
     static rearrangeBits( i, a /* an array of new positions */ ) {
         let returnValue = 0;
-        for ( let position = 0; position < a.length; ++position ) {
+        for ( let position = 0; position < a.length; position ++ ) {
             if ( a[position] >= 0 )
                 returnValue |= ( (i >> position) & 1 ) << a[position];
         }
@@ -1214,24 +1146,47 @@ class Sim { // Simulator
 
     // Consider a 16x16 density matrix M defined for 4 qubits, numbered 0 to 3.
     // The caller could do
-    //     partialTrace( 4, M, [0,1], true );
+    //     partialTrace( 4, M,true,null, [0,1], true );
     // to trace out qubits 0 and 1, keeping 2 and 3, and returning a 4x4 matrix.
     // Or, the caller could do
-    //     partialTrace( 4, M, [2,3], false );
+    //     partialTrace( 4, M,true,null, [2,3], false );
     // which would be equivalent.
     //
     static partialTrace(
-        n, // number of qubits in the circuit
+        n, // number of qubits
         inputMatrix, // a matrix of size (2**n)x(2**n)
+        isInputMatrixHermitian, // If true (which it should be if we are dealing with a density matrix), then this enables the partial trace to save time.
+
+        // If the client has a state vector psi, from which they will compute a density matrix M to pass in to us,
+        // computing and storing this M is hugely expensive (O(4^n)) for large n.
+        // So instead, the client can pass in their state vector psi here,
+        // and the partial trace will compute each required (row,col)th entry of M
+        // on the fly as psi[row]*psi[col].conjugate().
+        // Even though this will make the partial trace a bit slower,
+        // the time and memory saved by having the client not compute M is more than worth it.
+        inputStateVector, // If non-null, it's assumed to be (2^n)x1, and inputMatrix is ignored.
+
         qubitArray, // an array of values in the range 0 to n-1, each representing a qubit
-        arraySpecifiesQubitsToTraceOut // if false, the array specifies the qubits to keep (i.e., marginal qubits)
+        arraySpecifiesQubitsToTraceOut, // if false, the array specifies the qubits to keep (i.e., marginal qubits)
+
+        useLookupTable = true // Enables partial trace to go faster; should only be false for performance testing.
     ) {
         let twoN = 2**n;
-        Util.assert( inputMatrix._rows===twoN && inputMatrix._cols===twoN, "Sim.partialTrace(): input matrix has invalid size" );
-        Util.assert( 0 < qubitArray.length && qubitArray.length < n, "Sim.partialTrace(): array of qubit indices has invalid size" );
+        Util.assert(
+            ( inputMatrix!==null && inputMatrix._rows===twoN && inputMatrix._cols===twoN )
+            || ( inputStateVector!==null && inputStateVector._rows===twoN && inputStateVector._cols===1 ),
+            "Sim.partialTrace(): input has invalid size"
+        );
+        Util.assert( 0 <= qubitArray.length && qubitArray.length <= n, "Sim.partialTrace(): array of qubit indices has invalid size" );
+
+        if ( inputStateVector !== null ) {
+            // Since we will use a state vector to compute entries of the input matrix on the fly,
+            // the input matrix is a density matrix hence hermitian.
+            isInputMatrixHermitian = true;
+        }
 
         const _qubitArray = [...new Set(qubitArray)].sort((a, b) => a - b); // remove duplicates, and sort in ascending order
-        Util.assert( 0 <= _qubitArray[0] && _qubitArray[_qubitArray.length-1] < n, "Sim.partialTrace(): invalid qubit index" );
+        Util.assert( (_qubitArray.length===0) || (0 <= _qubitArray[0] && _qubitArray[_qubitArray.length-1] < n), "Sim.partialTrace(): invalid qubit index" );
 
         // Compute an array of complementary indices, containing all the indices in [0,n-1] that are not already in _qubitArray
         let _arrayOfOtherQubits = [];
@@ -1266,23 +1221,48 @@ class Sim { // Simulator
 
         let numQubitsToTraceOut = qubitsToTraceOut.length;
         let numQubitsToKeep = qubitsToKeep.length;
-        let twoOut = 2 ** numQubitsToTraceOut;
-        let twoKeep = 2 ** numQubitsToKeep;
-        let outputMatrix = new CMatrix(twoKeep,twoKeep);
+        Util.assert( numQubitsToTraceOut + numQubitsToKeep === n, "Sim.partialTrace(): unexpected condition" ); // sanity check
+        // This is 2^numQubitsToTraceOut == the dimension of the space being traced out
+        let tracedDimension = 1 << numQubitsToTraceOut;
+        // This is 2^numQubitsToKeep == the dimension of the resulting matrix
+        let resultDimension = 1 << numQubitsToKeep;
+        let outputMatrix = new CMatrix(resultDimension,resultDimension);
+
+        let lookupTable = [];
+        if ( useLookupTable ) {
+            for ( let tmp = 0; tmp < resultDimension; tmp ++ ) {
+                lookupTable[ tmp ] = Sim.rearrangeBits( tmp, qubitsToKeep );
+            }
+        }
 
         for (
             let shared_bits = 0; // bits common to input_row and input_col
-            shared_bits < twoOut;
+            shared_bits < tracedDimension;
             shared_bits ++
         ) {
-            let shared_bits_shifted = Sim.rearrangeBits( shared_bits, qubitsToTraceOut );
-            for ( let output_row = 0; output_row < twoKeep; output_row ++ ) {
-                let input_row = shared_bits_shifted | Sim.rearrangeBits( output_row, qubitsToKeep );
-                for ( let output_col = 0; output_col < twoKeep; output_col ++ ) {
-                    let input_col = shared_bits_shifted | Sim.rearrangeBits( output_col, qubitsToKeep );
+            let shared_bits_rearranged = Sim.rearrangeBits( shared_bits, qubitsToTraceOut );
+            for ( let output_row = 0; output_row < resultDimension; output_row ++ ) {
+                let input_row = shared_bits_rearranged | ( useLookupTable ? lookupTable[ output_row ] : Sim.rearrangeBits( output_row, qubitsToKeep ) );
+                for ( let output_col = 0; output_col <= (isInputMatrixHermitian?output_row:resultDimension-1) ; output_col ++ ) {
+                    let input_col = shared_bits_rearranged | ( useLookupTable ? lookupTable[ output_col ] : Sim.rearrangeBits( output_col, qubitsToKeep ) );
                     // The next line, in pseudocode, could be written more simply as
                     //    outputMatrix[output_row,output_col] += inputMatrix[input_row,input_col]
-                    outputMatrix.set( output_row, output_col, Complex.sum( outputMatrix.get(output_row,output_col), inputMatrix.get(input_row,input_col) ));
+                    outputMatrix.set( output_row, output_col, Complex.sum(
+                        outputMatrix.get(output_row,output_col),
+                        (inputStateVector!==null)
+                            ? Complex.mult( inputStateVector.get(input_row,0), inputStateVector.get(input_col,0).conjugate() )
+                            : inputMatrix.get(input_row,input_col)
+                    ));
+                }
+            }
+        }
+        if ( isInputMatrixHermitian ) {
+            // We've only computed the lower triangular half (including the diagonal)
+            // of the output matrix.
+            // Now we copy and conjugate (not including the diagonal) to the upper triangular half.
+            for ( let output_row = 1; output_row < resultDimension; output_row ++ ) {
+                for ( let output_col = 0; output_col < output_row; output_col ++ ) {
+                    outputMatrix.set( output_col, output_row, outputMatrix.get(output_row,output_col).conjugate() );
                 }
             }
         }
@@ -1290,6 +1270,7 @@ class Sim { // Simulator
     }
 
     // Returns a matrix of size (2**n)x(2**n)
+    // Requires time O(4^n) and memory O(4^n)
     static computeDensityMatrix(
         n, // number of qubits in the circuit
         stateVector // a matrix of size (2**n)x1, i.e. a column vector
@@ -1297,119 +1278,7 @@ class Sim { // Simulator
         Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.computeDensityMatrix(): state vector has invalid size" );
         return CMatrix.mult( stateVector, stateVector.conjugateTranspose() );
     }
-    // Implements partial trace down to one qubit. Returns a 2x2 matrix
-    // Should be equivalent to partialTrace( n, densityMatrix, [i], false );
-    static computeReducedDensityMatrixForOneQubit(
-        i, // the qubit of interest; we trace out the other qubits
-        n, // number of qubits in the circuit
-        densityMatrix // a matrix of size (2**n)x(2**n)
-    ) {
-        let twoN = 2**n;
-        Util.assert( 0<=i && i<n, "Sim.computeReducedDensityMatrixForOneQubit(): invalid index" );
-        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computeReducedDensityMatrixForOneQubit(): density matrix has invalid size" );
 
-        let rdm = new CMatrix(2,2); // reduced density matrix; a 2x2 matrix
-
-        let MAX = twoN >> 1;
-        let mask0 = (1<<i)-1; // results in a string of i 1s. E.g., if i=4, this results in 1111 in base 2
-        let mask1 = ((1<<(n-i-1))-1)<<i; // results in a string of (n-i-1) 1s, shifted left by (i)
-        Util.assert( mask1+mask0===MAX-1, "Sim.computeReducedDensityMatrixForOneQubit(): error with masks" );
-        for (
-            let shared_bits = 0; // bits common to input_row and input_col
-            shared_bits < MAX;
-            shared_bits ++
-        ) {
-            let shared_bits_shifted
-                // introduce a space for the ith bit to be added from the output_row or output_col
-                = ((shared_bits & mask1)<<1) | (shared_bits & mask0);
-            for ( let output_row = 0; output_row < 2; output_row ++ ) {
-                let input_row = shared_bits_shifted | (output_row<<i);
-                for ( let output_col = 0; output_col < 2; output_col ++ ) {
-                    let input_col = shared_bits_shifted | (output_col<<i);
-                    // The next line, in pseudocode, could be written more simply as
-                    //    rdm[output_row,output_col] += densityMatrix[input_row,input_col]
-                    rdm.set( output_row, output_col, Complex.sum( rdm.get(output_row,output_col), densityMatrix.get(input_row,input_col) ));
-                }
-            }
-        }
-        return rdm;
-    }
-    // Implements partial trace down to two qubits. Returns a 4x4 matrix
-    // Should be equivalent to partialTrace( n, densityMatrix, [i,j], false );
-    static computeReducedDensityMatrixForTwoQubits(
-        i,j, // the two qubits of interest; we trace out the other qubits
-        n, // number of qubits in the circuit
-        densityMatrix // a matrix of size (2**n)x(2**n)
-    ) {
-        if ( i > j ) {
-            // swap
-            let tmp = i;
-            i = j;
-            j = tmp;
-        }
-        let twoN = 2**n;
-        Util.assert( 0<=i && i<j && j<n, "Sim.computeReducedDensityMatrixForTwoQubits(): invalid indices" );
-        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computeReducedDensityMatrixForTwoQubits(): density matrix has invalid size" );
-
-        let rdm = new CMatrix(4,4); // reduced density matrix; a 4x4 matrix
-
-        let MAX = twoN >> 2;
-        let mask0 = (1<<i)-1; // results in a string of i 1s. E.g., if i=4, this results in 1111 in base 2
-        let mask1 = ((1<<(j-i-1))-1)<<i; // results in a string of (j-i-1) 1s, shifted left by i.
-        let mask2 = ((1<<(n-j-1))-1)<<(j-1); // results in a string of (n-j-1) 1s, shifted left by (j-1)
-        Util.assert( mask2+mask1+mask0===MAX-1, "Sim.computeReducedDensityMatrixForTwoQubits(): error with masks" );
-        for (
-            let shared_bits = 0; // bits common to input_row and input_col
-            shared_bits < MAX;
-            shared_bits ++
-        ) {
-            let shared_bits_shifted
-                // introduce two spaces for the ith and jth bits to be added from the output_row or output_col
-                = ((shared_bits & mask2)<<2) | ((shared_bits & mask1)<<1) | (shared_bits & mask0);
-            for ( let output_row = 0; output_row < 4; output_row ++ ) {
-                let input_row = shared_bits_shifted | ((output_row&2)<<(j-1)) | ((output_row&1)<<i);
-                for ( let output_col = 0; output_col < 4; output_col ++ ) {
-                    let input_col = shared_bits_shifted | ((output_col&2)<<(j-1)) | ((output_col&1)<<i);
-                    // The next line, in pseudocode, could be written more simply as
-                    //    rdm[output_row,output_col] += densityMatrix[input_row,input_col]
-                    rdm.set( output_row, output_col, Complex.sum( rdm.get(output_row,output_col), densityMatrix.get(input_row,input_col) ));
-                }
-            }
-        }
-        return rdm;
-    }
-    // Implements partial trace to trace out one qubit. Returns a matrix with half as many rows and half as many columns.
-    // Should be equivalent to partialTrace( n, densityMatrix, [i], true );
-    static computeReducedDensityMatrixForOneLessQubit(
-        i, // the qubit to trace out
-        n, // number of qubits in the circuit
-        densityMatrix // a matrix of size (2**n)x(2**n)
-    ) {
-        let twoN = 2**n;
-        Util.assert( 0<=i && i<n, "Sim.computeReducedDensityMatrixForOneLessQubit(): invalid index" );
-        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computeReducedDensityMatrixForOneLessQubit(): density matrix has invalid size" );
-
-        let rdm = new CMatrix(twoN/2,twoN/2); // reduced density matrix
-
-        let mask_i = 1 << i;
-        let mask_low = mask_i - 1;
-        let mask_high = (twoN-1) - mask_i - mask_low;
-        for ( let input_row = 0; input_row < twoN; input_row ++ ) {
-            let traced_bit = (input_row & mask_i) >> i;
-            let output_row = ((input_row & mask_high)>>1) | (input_row & mask_low);
-            for ( let input_col = 0; input_col < twoN; input_col ++ ) {
-                if ( (input_col & mask_i)>>i === traced_bit ) {
-                    let output_col = ((input_col & mask_high)>>1) | (input_col & mask_low);
-
-                    // The next line, in pseudocode, could be written more simply as
-                    //    rdm[output_row,output_col] += densityMatrix[input_row,input_col]
-                    rdm.set( output_row, output_col, Complex.sum( rdm.get(output_row,output_col), densityMatrix.get(input_row,input_col) ));
-                }
-            }
-        }
-
-        return rdm;
-    }
     // returns an object containing statistics
     static computeStatsFor2x2DensityMatrix(
         dm // a 2x2 density matrix for a single qubit
@@ -1496,14 +1365,13 @@ class Sim { // Simulator
     // returns an array of objects, one for each qubit
     static analyzeEachQubit(
         n, // number of qubits in the circuit
-        densityMatrix // a matrix of size (2**n)x(2**n)
+        arrayOfAll2x2ReducedDensityMatrices
     ) {
-        let twoN = 2**n;
-        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.analyzeEachQubit(): density matrix has invalid size" );
+        Util.assert( arrayOfAll2x2ReducedDensityMatrices.length===n, "Sim.analyzeEachQubit(): array of matrices has invalid size" );
 
         let results = [];
         for ( let i = 0; i < n; ++i ) {
-            let RDM = Sim.computeReducedDensityMatrixForOneQubit(i,n,densityMatrix);
+            let RDM = arrayOfAll2x2ReducedDensityMatrices[ i ];
             let S = Sim.computeStatsFor2x2DensityMatrix( RDM );
             S.reducedDensityMatrix = RDM;
             results.push( S );
@@ -1514,10 +1382,12 @@ class Sim { // Simulator
         n, // number of qubits in the circuit
         stateVector // a matrix of size (2**n)x1, i.e. a column vector
     ) {
+        if ( n > 7 ) return; // too many qubits
         Util.assert( stateVector._rows===(2**n) && stateVector._cols===1, "Sim.printAnalysisOfEachQubit(): state vector has invalid size" );
         let DM = Sim.computeDensityMatrix( n, stateVector );
         console.log("Density matrix is\n" + DM.toString({decimalPrecision:2}) + "\nwith trace " + DM.trace() + " and purity " + (CMatrix.mult(DM,DM)).trace() );
-        let stats = Sim.analyzeEachQubit(n,DM);
+        let arrayOfAll2x2ReducedDensityMatrices = Sim.computeAll2x2ReducedDensityMatrices( n, stateVector );
+        let stats = Sim.analyzeEachQubit( n, arrayOfAll2x2ReducedDensityMatrices );
         for ( let i = 0; i < n; ++i ) {
             let RDM = stats[i].reducedDensityMatrix;
             console.log(StringUtil.concatMultiline(`Reduced density matrix for qubit ${i} is `, RDM.toString(), " with trace " + RDM.trace() + " and purity " + (CMatrix.mult(RDM,RDM)).trace() ));
@@ -1645,7 +1515,7 @@ class Sim { // Simulator
     //       = 0
     // as expected.
     // 
-    static computePairwiseQubitCorrelations( // TODO this needs more testing
+    static computePairwiseQubitCorrelations(
         n, // number of qubits in the circuit
         stateVector // a matrix of size (2**n)x1, i.e. a column vector
     ) {
@@ -1731,17 +1601,16 @@ class Sim { // Simulator
     //    https://physics.stackexchange.com/questions/46443/what-is-the-motivation-for-the-definition-of-concurrence-in-quantum-information
     static computePairwiseQubitConcurrences(
         n, // number of qubits in the circuit
-        densityMatrix // a matrix of size (2**n)x(2**n)
+        arrayOfAll4x4ReducedDensityMatrices
     ) {
-        let twoN = 2**n;
-        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computePairwiseQubitConcurrences(): density matrix has invalid size" );
+        Util.assert( arrayOfAll4x4ReducedDensityMatrices.length===(n*(n-1)/2), "Sim.computePairwiseQubitConcurrences(): array of matrices has invalid size" );
 
         let result = new CMatrix(n,n);
         let Y_tensor_Y = CMatrix.tensor(Sim.Y,Sim.Y);
         for ( let i=0; i <= n-2; ++i ) {
             for ( let j=i+1; j <= n-1; ++j ) {
 
-                let rdm = Sim.computeReducedDensityMatrixForTwoQubits(i,j,n,densityMatrix);
+                let rdm = arrayOfAll4x4ReducedDensityMatrices[ Sim.indexInArrayOfAllPairs(i,j) ];
                 //console.log(`reduced density matrix ${i},${j} is \n` + rdm.toString() );
                 let spin_flipped_rdm = CMatrix.naryMult([ Y_tensor_Y, rdm.conjugate(), Y_tensor_Y ]);
                 let m = CMatrix.mult( rdm, spin_flipped_rdm );
@@ -1778,16 +1647,15 @@ class Sim { // Simulator
     //
     static computePairwiseQubitPurity(
         n, // number of qubits in the circuit
-        densityMatrix // a matrix of size (2**n)x(2**n)
+        arrayOfAll4x4ReducedDensityMatrices
     ) {
-        let twoN = 2**n;
-        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computePairwiseQubitPurity(): density matrix has invalid size" );
+        Util.assert( arrayOfAll4x4ReducedDensityMatrices.length===(n*(n-1)/2), "Sim.computePairwiseQubitPurity(): array of matrices has invalid size" );
 
         let result = new CMatrix(n,n);
         for ( let i=0; i <= n-2; ++i ) {
             for ( let j=i+1; j <= n-1; ++j ) {
 
-                let rdm = Sim.computeReducedDensityMatrixForTwoQubits(i,j,n,densityMatrix);
+                let rdm = arrayOfAll4x4ReducedDensityMatrices[ Sim.indexInArrayOfAllPairs(i,j) ];
                 //console.log(`reduced density matrix ${i},${j} is \n` + rdm.toString() );
                 result.set( i, j, (CMatrix.mult(rdm,rdm)).trace() );
             }
@@ -1807,16 +1675,15 @@ class Sim { // Simulator
     //
     static computePairwiseQubitVonNeumannEntropy(
         n, // number of qubits in the circuit
-        densityMatrix // a matrix of size (2**n)x(2**n)
+        arrayOfAll4x4ReducedDensityMatrices
     ) {
-        let twoN = 2**n;
-        Util.assert( densityMatrix._rows===twoN && densityMatrix._cols===twoN, "Sim.computePairwiseQubitVonNeumannEntropy(): density matrix has invalid size" );
+        Util.assert( arrayOfAll4x4ReducedDensityMatrices.length===(n*(n-1)/2), "Sim.computePairwiseQubitVonNeumannEntropy(): array of matrices has invalid size" );
 
         let result = new CMatrix(n,n);
         for ( let i=0; i <= n-2; ++i ) {
             for ( let j=i+1; j <= n-1; ++j ) {
 
-                let rdm = Sim.computeReducedDensityMatrixForTwoQubits(i,j,n,densityMatrix);
+                let rdm = arrayOfAll4x4ReducedDensityMatrices[ Sim.indexInArrayOfAllPairs(i,j) ];
                 //console.log(`reduced density matrix ${i},${j} is \n` + rdm.toString() );
 
                 let lambda = Sim.eigendecomposition( rdm );
