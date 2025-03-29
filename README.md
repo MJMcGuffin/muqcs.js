@@ -373,44 +373,45 @@ $\sqrt[4]{Z}^{-1}$, Phase($-\pi/4$), $T^{-1}$, `Sim.invSSZ`, `Sim.Phase(-45)`
 \begin{bmatrix} 1 & 0 \\ 0 & e^{-i \pi/4} \end{bmatrix}
 ```
 
-global phase shift, `Sim.GlobalPhase (angleInDegrees)`
+global phase shift, `Sim.GlobalPhase(angleInDegrees)`
 ```math
 e^{i \theta} \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
 ```
 
-phase shift, `Sim.Phase (angleInDegrees)`
+phase shift, `Sim.Phase(angleInDegrees)`
 ```math
 \begin{bmatrix} 1 & 0 \\ 0 & e^{i \theta} \end{bmatrix}
 ```
 
-$R_x$, `Sim.RX (angleInDegrees)`
+$R_x$, `Sim.RX(angleInDegrees)`
 ```math
 \begin{bmatrix} \cos(\theta/2) & -i \sin(\theta/2) \\ -i \sin(\theta/2) & \cos(\theta/2) \end{bmatrix}
 = \cos(\theta/2) I - i \sin(\theta/2) X
 ```
 
-$R_y$, `Sim.RY (angleInDegrees)`
+$R_y$, `Sim.RY(angleInDegrees)`
 ```math
 \begin{bmatrix} \cos(\theta/2) & -\sin(\theta/2) \\ \sin(\theta/2) & \cos(\theta/2) \end{bmatrix}
 = \cos(\theta/2) I - i \sin(\theta/2) Y
 ```
 
-$R_z$, `Sim.RZ (angleInDegrees)`
+$R_z$, `Sim.RZ(angleInDegrees)`
 ```math
 \begin{bmatrix} e^{-i \theta/2} & 0 \\ 0 & e^{i \theta/2} \end{bmatrix}
 = \cos(\theta/2) I - i \sin(\theta/2) Z
 ```
 
-`Sim.RotFreeAxis (ax,ay,az)`
+`Sim.RotFreeAxis(ax,ay,az)`
 <p align="center">
   (see definition in source code)
 </p>
 
-`Sim.RotFreeAxisAngle (ax,ay,az, angleInDegrees)`
+`Sim.RotFreeAxisAngle(ax,ay,az, angleInDegrees)`
 <p align="center">
   (see definition in source code)
 </p>
 
+`Sim.XE(k)`,
 $X^k = R_x(k \pi) GlobalPhase(k \pi/2)$
 ```math
 \frac{1}{2} \begin{bmatrix} 1+e^{i k \pi} & 1-e^{i k \pi} \\ 1-e^{i k \pi} & 1+e^{i k \pi} \end{bmatrix}
@@ -418,11 +419,13 @@ $X^k = R_x(k \pi) GlobalPhase(k \pi/2)$
 e^{i k \pi/2}
 ```
 
+`Sim.YE(k)`,
 $Y^k = R_y(k \pi) GlobalPhase(k \pi/2)$
 ```math
 \frac{1}{2} \begin{bmatrix} 1+e^{i k \pi} & i(e^{i k \pi}-1) \\ i(1-e^{i k \pi}) & 1+e^{i k \pi} \end{bmatrix} = \begin{bmatrix} \cos(k \pi/2) & -\sin(k \pi/2) \\ \sin(k \pi/2) & \cos(k \pi/2) \end{bmatrix} e^{i k \pi/2}
 ```
 
+`Sim.ZE(k)`,
 $Z^k = R_z(k \pi) GlobalPhase(k \pi/2) = Phase(k \pi)$
 ```math
 \begin{bmatrix} 1 & 0 \\ 0 & e^{i k \pi} \end{bmatrix} = \begin{bmatrix} e^{-i k \pi/2} & 0 \\ 0 & e^{i k \pi/2} \end{bmatrix} e^{i k \pi/2}
@@ -437,6 +440,8 @@ $H^k$
 ## Non-standard operations proposed by McGuffin
 
 ### Generalized Z
+
+`Sim.Z_G(angle1InDegrees, angle2InDegrees)`
 
 #### Definition:
 
@@ -482,6 +487,8 @@ Z_G(a,b) Z_G(c,d) = Z_G(a+c,b+d)
 
 ### Generalized Y
 
+`Sim.Y_G(angle1InDegrees, angle2InDegrees)`
+
 #### Definition:
 
 ```math
@@ -509,6 +516,8 @@ Y_G(a,b) Z_G(c,d) = Z_G(d,c) Y_G(a,b) = Y_G(a+c,b+d)
 ```
 
 ### Generalized Hadamard
+
+`Sim.H_G(angle1InDegrees, angle2InDegrees)`
 
 #### Definition:
 
