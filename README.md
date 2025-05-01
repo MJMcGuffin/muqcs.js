@@ -234,11 +234,11 @@ Some predefined basis vectors:
 |  $\langle 1 \|$  | `Sim.braOne` | 1x2 | <pre>[ 0 1 ]</pre> | |
 |  $\| 1 \rangle$  | `Sim.ketOne` | 2x1 | <pre>[ 0 ]<br>[ 1 ]</pre> | |
 |  $\langle + \|$  | `Sim.braPlus` | 1x2 | <pre>(1/sqrt(2)) [ 1 1 ]</pre> | |
-|  $\| + \rangle$  | `Sim.ketPlus` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ 1 ]</pre> | $\| + \rangle = \frac{1}{\sqrt{2}}(\| 0 \rangle + \| 1 \rangle)$ |
+|  $\| + \rangle$  | `Sim.ketPlus` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ 1 ]</pre> | $\ket{+} = \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})$ |
 |  $\langle - \|$  | `Sim.braMinus` | 1x2 | <pre>1/sqrt(2) [ 1 -1 ]</pre> | |
 |  $\| - \rangle$  | `Sim.ketMinus` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -1 ]</pre> | |
 |  $\bra{+i}$  | `Sim.braPlusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 -i ]</pre> |  |
-|  $\ket{+i}$  | `Sim.ketPlusI` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ i ]</pre> | $\| +i \rangle = \frac{1}{\sqrt{2}}(\| 0 \rangle + i\| 1 \rangle)$ |
+|  $\ket{+i}$  | `Sim.ketPlusI` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ i ]</pre> | $\ket{+i} = \frac{1}{\sqrt{2}}(\ket{0} + i\ket{1})$ |
 |  $\bra{-i}$  | `Sim.braMinusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 i ]</pre> | |
 |  $\ket{-i}$  | `Sim.ketMinusI` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -i ]</pre> | |
 
