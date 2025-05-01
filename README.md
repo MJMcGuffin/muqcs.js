@@ -218,12 +218,12 @@ but only in one subroutine (Sim.eigendecomposition()) which is used to compute c
 
 **Background Notes**
 
-Think of bra ($\langle a |$) as a row vector, and ket ($| a \rangle$) as a column vector equal to the conjugate transpose of the bra.
-Then, multiplying a bra by a ket yields a dot product (i.e., $(\langle a |)(| b \rangle)$, abbreviated to $\langle a | b \rangle$, yields a 1x1 matrix);
-multiplying a bra by its corresponding ket ($\langle a | a \rangle$) yields a dot product equal to the
+Think of bra ($\bra{a}$) as a row vector, and ket ($\ket{a}$) as a column vector equal to the conjugate transpose of the bra.
+Then, multiplying a bra by a ket yields a dot product (i.e., $(\bra{a})(\ket{b})$, abbreviated to $\braket{a|b}$, yields a 1×1 matrix);
+multiplying a bra by its corresponding ket ($\braket{a|a}$) yields a dot product equal to the
 sum of the squared magnitudes of the complex numbers in the bra;
-and multiplying a ket by its corresponding bra ($| a \rangle \langle a |$) yields a square matrix called
-the density matrix, whose trace (sum of elements along the diagonal) is equal to $tr(| a \rangle \langle a |) = \langle a | a \rangle$.
+and multiplying a ket by its corresponding bra ($\ket{a}\bra{a}$) yields a square matrix called
+the density matrix, whose trace (sum of elements along the diagonal) is equal to $Tr(\ket{a}\bra{a}) = \braket{a|a}$.
 
 Some predefined basis vectors:
 
@@ -237,16 +237,16 @@ Some predefined basis vectors:
 |  $\| + \rangle$  | `Sim.ketPlus` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ 1 ]</pre> | $\| + \rangle = \frac{1}{\sqrt{2}}(\| 0 \rangle + \| 1 \rangle)$ |
 |  $\langle - \|$  | `Sim.braMinus` | 1x2 | <pre>1/sqrt(2) [ 1 -1 ]</pre> | |
 |  $\| - \rangle$  | `Sim.ketMinus` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -1 ]</pre> | |
-|  $\langle +i \|$  | `Sim.braPlusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 -i ]</pre> |  |
-|  $\|+i\rangle$  | `Sim.ketPlusI` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ i ]</pre> | $\| +i \rangle = \frac{1}{\sqrt{2}}(\| 0 \rangle + i\| 1 \rangle)$ |
-|  $\langle -i \|$  | `Sim.braMinusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 i ]</pre> | |
-|  $\|-i\rangle$  | `Sim.ketMinusI` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -i ]</pre> | |
+|  $\bra{+i}$  | `Sim.braPlusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 -i ]</pre> |  |
+|  $\ket{+i}$  | `Sim.ketPlusI` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ i ]</pre> | $\| +i \rangle = \frac{1}{\sqrt{2}}(\| 0 \rangle + i\| 1 \rangle)$ |
+|  $\bra{-i}$  | `Sim.braMinusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 i ]</pre> | |
+|  $\ket{-i}$  | `Sim.ketMinusI` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -i ]</pre> | |
 
-Consider a circuit of $N$ qubits where the overall state of the circuit is pure, i.e., none of the qubits are entangled with the environment.  The state of the $N$ qubits can be described using a $2^N \times 1$ (column) state vector $\| \psi \rangle$, or using a $2^N \times 2^N$ density matrix $D = \| \psi \rangle \langle \psi \|$.  To better understand some subset of $M$ qubits within the circuit, we can compute a partial trace of $D$ to "trace out" or "trace over" the other qubits, yielding a $2^M \times 2^M$ reduced density matrix $R$.  The purity of $R$ is given by the trace of $R^2$, and one minus that purity gives the linear entropy, which is an approximation of the von Neumann entropy (https://www.quantiki.org/wiki/linear-entropy) of the subset of $M$ qubits.  Purity ranges from $1/(2^M)$ to 1.0, linear entropy ranges from 0.0 to $1-1/(2^M)$, and von Neumann entropy ranges from 0.0 to M.  Entropy is a measure of the mixedness (the opposite of purity) of the subset of qubits, and mixedness is, roughly speaking, how entangled the subset of qubits is with other qubits outside the subset.  Concurrence is a measure of how much the qubits are entangled with other qubits within the same subset.  There's a nice table at https://physics.stackexchange.com/questions/643578/what-are-the-relations-between-mixed-pure-and-separable-entangled-states showing types of states, by crossing {pure, mixed} $\times$ {product, separable, entangled}.
+Consider a circuit of $N$ qubits where the overall state of the circuit is pure, i.e., none of the qubits are entangled with the environment.  The state of the $N$ qubits can be described using a $2^N \times 1$ (column) state vector $\| \psi \rangle$, or using a $2^N \times 2^N$ density matrix $D = \ket{\psi}\bra{\psi}$.  To better understand some subset of $M$ qubits within the circuit, we can compute a partial trace of $D$ to "trace out" or "trace over" the other qubits, yielding a $2^M \times 2^M$ reduced density matrix $R$.  The purity of $R$ is given by the trace of $R^2$, and one minus that purity gives the linear entropy, which is an approximation of the von Neumann entropy (https://www.quantiki.org/wiki/linear-entropy) of the subset of $M$ qubits.  Purity ranges from $1/(2^M)$ to 1.0, linear entropy ranges from 0.0 to $1-1/(2^M)$, and von Neumann entropy ranges from 0.0 to M.  Entropy is a measure of the mixedness (the opposite of purity) of the subset of qubits, and mixedness is, roughly speaking, how entangled the subset of qubits is with other qubits outside the subset.  Concurrence is a measure of how much the qubits are entangled with other qubits within the same subset.  There's a nice table at https://physics.stackexchange.com/questions/643578/what-are-the-relations-between-mixed-pure-and-separable-entangled-states showing types of states, by crossing {pure, mixed} $\times$ {product, separable, entangled}.
 
 A matrix $M$ is *unitary* if its inverse is equal to its conjugate transpose, i.e., $M^{-1} = M^{*}$ or $M^{-1} = M^{\dagger}$
 
-A matrix $M$ is *hermitian* if it is equal to its own conjugate transpose, i.e., $M = M^{*}$, which implies that the diagonal elements are real, and the off-diagonal elements are conjugates of each other (i.e., diagonally-opposite entries are complex conjugates).
+A matrix $M$ is *hermitian* if it is equal to its own conjugate transpose, i.e., $M = M^{\dagger}$, which implies that the diagonal elements are real, and the off-diagonal elements are conjugates of each other (i.e., diagonally-opposite entries are complex conjugates).
 
 A matrix $M$ is *involutory* if it is equal to its own inverse, $M = M^{-1}$
 
