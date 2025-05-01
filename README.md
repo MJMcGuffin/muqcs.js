@@ -10,7 +10,7 @@ the phase, probability, purity, linear entropy, and von Neumann entropy (to quan
 the concurrence (to quantify entanglement), correlation, purity, linear entropy, and von Neumann entropy of pairs of qubits;
 and the stabilizer Rényi entropy (to quantify magic) of a set of qubits.
 
-On my 2022 laptop, running inside Chrome, Muqcs can simulate circuits on N=20 qubits at a speed of less than 100ms per gate, and can also compute all N(N-1)/2 4x4 2-qubit partial traces and all N 2x2 1-qubit partial traces in under 22 seconds, all without ever computing any explicit (2^N)x(2^N) matrices.
+On my 2022 laptop, running inside Chrome, Muqcs can simulate circuits on N=20 qubits at a speed of less than 100ms per gate, and can also compute all N(N-1)/2 4×4 2-qubit partial traces and all N 2×2 1-qubit partial traces in under 22 seconds, all without ever computing any explicit $2^N \times 2^N$ matrices.
 
 To run the code, <a href="https://mjmcguffin.github.io/muqcs.js/">load the html file</a> into a browser like Chrome, and then open a console (in Chrome, this is done by selecting 'Developer Tools').  From the console prompt, you can call functions in the code and see output printed to the console.
 
@@ -55,7 +55,7 @@ There are also some predefined vectors and matrices.  For example,
 
     console.log(Sim.ketOne.toString());
 
-prints the column vector |1>:
+prints the column vector $\ket{1}$:
 
     [_]
     [1]
@@ -64,7 +64,7 @@ and
 
     console.log(Sim.CX.toString());
 
-prints the 4x4 matrix for the CNOT (also called CX) gate:
+prints the 4×4 matrix for the CNOT (also called CX) gate:
 
     [1,_,_,_]
     [_,_,_,1]
@@ -75,7 +75,7 @@ Notice that zeros are replaced with underscores to make it easier for a human to
 
     console.log(Sim.CX.reverseEndianness().toString());
 
-prints the 4x4 matrix for the CNOT gate in its more usual form:
+prints the 4×4 matrix for the CNOT gate in its more usual form:
 
     [1,_,_,_]
     [_,1,_,_]
@@ -84,7 +84,7 @@ prints the 4x4 matrix for the CNOT gate in its more usual form:
 
 **Simulating a Quantum Circuit**
 
-To simulate a circuit, there are two approaches.  The first involves computing one explicit matrix for each layer (or step or stage) of the circuit.  In a circuit with N qubits, the matrices will have size 2^N x 2^N.  Here we see an example of how to simulate a 3-qubit circuit with this first approach:
+To simulate a circuit, there are two approaches.  The first involves computing one explicit matrix for each layer (or step or stage) of the circuit.  In a circuit with N qubits, the matrices will have size $2^N \times 2^N$.  Here we see an example of how to simulate a 3-qubit circuit with this first approach:
 
     // Simulate a circuit on three qubits
     // equivalent to
@@ -109,9 +109,9 @@ To simulate a circuit, there are two approaches.  The first involves computing o
         " = ", output.toString({binaryPrefixes:true})
     ));
 
-Each matrix takes up O((2^N)^2) space (one gigabyte for N=13 qubits, assuming 8 bytes per float), and calling CMatrix.mult() on two such matrices would cost O((2^N)^3) time.
-However, the call to naryMult() above causes the matrices to be multiplied right-to-left, because naryMult() checks the sizes of the matrices to optimize the multiplication order, and the right-most matrix passed to naryMult() is just a column vector of size 2^N x 1.  The matrix just before that has size 2^N x 2^N, and multiplying the two together costs O((2^N)^2) and produces another column vector, which gets multiplied by the next matrix before them, etc. 
-Hence, in this first approach, the space and time requirements of each layer of the circuit are O((2^N)^2).
+Each matrix takes up $O((2^N)^2)=O(4^N)$ space (one gigabyte for N=13 qubits, assuming 16 bytes per complex number), and calling CMatrix.mult() on two such matrices would cost $O((2^N)^3)=O(8^N)$ time.
+However, the call to naryMult() above causes the matrices to be multiplied right-to-left, because naryMult() checks the sizes of the matrices to optimize the multiplication order, and the right-most matrix passed to naryMult() is just a column vector of size $2^N \times 1$.  The matrix just before that has size $2^N \times 2^N$, and multiplying the two together costs $O((2^N)^2)=O(4^N)$ and produces another column vector, which gets multiplied by the next matrix before them, etc. 
+Hence, in this first approach, the space and time requirements of each layer of the circuit are $O((2^N)^2)=O(4^N)$.
 Notice in the last call to toString() above, we pass in {binaryPrefixes:true}; this causes bit strings like |000> to be printed in front of the matrix, as a reminder of the association between base states and matrix rows.
 The output is:
 
@@ -124,7 +124,7 @@ The output is:
     [_,_,_,_,1,_,_,_]   [0       ,0       ,0       ,0       ,0.1-0.4i,0       ,0.9+0.4i,0       ]         [_]   |110>[0.302+0.479i]
     [_,_,_,_,_,1,_,_]   [0       ,0       ,0       ,0       ,0       ,0.1-0.4i,0       ,0.9+0.4i]         [_]   |111>[0.198-0.125i]
 
-A second approach to simulating the same circuit is to not compute any explicit matrices of size 2^N x 2^N.  Instead, we only store the state vector of size 2^N x 1, and update it for each layer of the circuit.  The following code does this:
+A second approach to simulating the same circuit is to not compute any explicit matrices of size $2^N \times 2^N$.  Instead, we only store the state vector of size $2^N \times 1$, and update it for each layer of the circuit.  The following code does this:
 
     input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
     step1 = Sim.qubitWiseMultiply(Sim.H,2,3,input,[]);
@@ -139,16 +139,16 @@ A second approach to simulating the same circuit is to not compute any explicit 
         " -> ", output.toString({binaryPrefixes:true})
     ));
 
-In this second approach, the space and time requirements of each step of the circuit are O(2^N), so, much better than in the first approach.
-The key algorithm enabling this is in Sim.qubitWiseMultiply() method, which is inspired by Quirk’s source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js (<a href="https://github.com/Strilanc/Quirk/blob/master/src/math/Matrix.js#L678">link to specific line</a>).  This is essentially the "qubit-wise multiplication" algorithm described in chapter 6 of the book Viamontes, G. F., Markov, I. L., & Hayes, J. P. (2009) "Quantum circuit simulation", although their pseudocode contains errors and does not support control bits.
+In this second approach, the space and time requirements of each layer (or step) of the circuit are $O(2^N)$, so, much better than in the first approach.
+The key algorithm enabling this is in Sim.qubitWiseMultiply() method, which is inspired by Quirk's source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js (<a href="https://github.com/Strilanc/Quirk/blob/master/src/math/Matrix.js#L678">link to specific line</a>).  This is essentially the "qubit-wise multiplication" algorithm described in chapter 6 of the book Viamontes, G. F., Markov, I. L., & Hayes, J. P. (2009) "Quantum circuit simulation", although their pseudocode contains errors and does not support control bits.
 
 More explanation and code examples appear in the slides under the doc folder of the repository.
 
 **Circuit and Qubit Statistics**
 
 From the amplitudes output by muqcs, we can easily find the probability of each computational basis state.
-In addition, muqcs can compute the (2^N x 2^N) density matrix for a give state vector,
-and also compute the (2x2) reduced density matrix (using the partial trace) for each qubit, from which we can compute
+In addition, muqcs can compute the ($2^N \times 2^N$) density matrix for a give state vector,
+and also compute the (2×2) reduced density matrix (using the partial trace) for each qubit, from which we can compute
 the phase, Bloch sphere coordinates, and purity (also called 'reduced purity' or 'purity of reduced state') for each qubit.
 The Bloch sphere coordinates are a way to describe the qubit's 'local state'.
 The purity for a single qubit varies from 0.5 to 1.0 and indicates how entangled the qubit is with the rest of the system:
