@@ -16,10 +16,16 @@ To run the code, <a href="https://mjmcguffin.github.io/muqcs.js/">load the html 
 
 Muqcs is named in allusion to <a href="https://sourceforge.net/projects/mush/">mush</a>, Moser's Useless SHell, written by Derrick Moser (dtmoser).
 <!-- The commands \bra, \ket, \braket used to render properly, but now they don't, so I'm defining my own versions here. Unfortunately, these render with extra spaces when used with the symbols -, +, -i, +i, but I don't know how to fix this as none of \! nor \hspace{-3mu} nor \mspace{-3mu} nor \kern{-3mu} work. -->
+<!-- Using \left, \right makes the symbols excessively big when the expression inside has a subscript.
 $\newcommand{\mybra}[1]{\left\langle #1 \right|}$
 $\newcommand{\myket}[1]{\left| #1 \right\rangle}$
 $\newcommand{\mybraket}[2]{\left\langle #1 \middle| #2 \right\rangle}$
 $\newcommand{\myketbra}[2]{\left| #1 \right\rangle \left\langle #2 \right|}$
+-->
+$\newcommand{\mybra}[1]{\langle #1|}$
+$\newcommand{\myket}[1]{|#1 \rangle}$
+$\newcommand{\mybraket}[2]{\langle #1|#2 \rangle}$
+$\newcommand{\myketbra}[2]{|#1 \rangle \langle #2|}$
 
 **Creating and Manipulating Matrices**
 
@@ -89,69 +95,202 @@ prints the 4×4 matrix for the CNOT gate in its more usual form:
 
 **Simulating a Quantum Circuit**
 
-To simulate a circuit, there are two approaches.  The first involves computing one explicit matrix for each layer (or step or stage) of the circuit.  In a circuit with N qubits, the matrices will have size $2^N \times 2^N$.  Here we see an example of how to simulate a 3-qubit circuit with this first approach:
+To simulate a circuit, one approach is to compute an explicit matrix for each layer (or step or stage) of the circuit.  In a circuit with $n$ qubits, these matrices for each layer will have size $2^n \times 2^n$.  Consider this 3-qubit circuit with 4 layers:
 
-    // Simulate a circuit on three qubits
-    // equivalent to
-    //     https://algassert.com/quirk#circuit={%22cols%22:[[%22X^%C2%BC%22,%22Y^%C2%BC%22,%22H%22],[1,%22X^%C2%BC%22],[1,%22X%22,%22%E2%80%A2%22]]}
-    //
-    // qubit q0 |0>----(x^0.25)-------------------------
-    //
-    // qubit q1 |0>----(y^0.25)-----(x^0.25)----(+)-----
-    //                                           |
-    // qubit q2 |0>-------H----------------------o------
-    //
-    input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
-    step1 = CMatrix.naryTensor( [ Sim.H /*q2*/, Sim.SSY /*q1*/, Sim.SSX /*q0*/ ] );
-    step2 = CMatrix.naryTensor( [ Sim.I /*q2*/, Sim.SSX /*q1*/, Sim.I /*q0*/ ] );
-    step3 = Sim.expand4x4ForNWires( Sim.CX, 2, 1, 3 );
-    output = CMatrix.naryMult([ step3, step2, step1, input ]);
+![Example circuit 1](/doc/exampleCircuit-1.png)
+
+The input state vector $\myket{\psi_0}$ is an $8 \times 1$ column vector, computed as the tensor product
+$\myket{\psi_0}$ = $\myket{0}$ $\otimes$ $\myket{0}$ $\otimes$ $\myket{0}$ = $\myket{000}$ = $\myket{0}^{\otimes 3}$,
+which can be computed in any of the following ways:
+
+    psi_0 = CMatrix.tensor( Sim.ketZero, CMatrix.tensor( Sim.ketZero, Sim.ketZero ) );
+    console.log( psi_0.toString() );
+    psi_0 = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
+    console.log( psi_0.toString() );
+    psi_0 = CMatrix.tensorPower( Sim.ketZero, 3 );
+    console.log( psi_0.toString() );
+
+The quantum logic gates for $X$, $Z$, and $H$ each correspond to particular $2 \times 2$ matrices.
+The $8 \times 8$ matrix $L_1$ is computed as the tensor product $L_1 = X \otimes H \otimes I$, where $I$ is the $2 \times 2$ identity matrix.  In code, we can do
+
+    let L_1 = CMatrix.naryTensor( [ Sim.X, Sim.H, Sim.I ] ); // these are ordered q2, q1, q0
+    console.log( L_1.toString() );
+
+Layers 2 and 4 involve gates with control bits.
+The CX (also called controlled-X or controlled-NOT or CNOT) gate in layer 4 is described by a particular $4 \times 4$ matrix,
+and the upside-down CX in layer 2 is described by a similar $4 \times 4$ matrix.
+Here is how we could compute the $8 \times 8$ matrix for each layer and compute the $8 \times 1$ output of the circuit:
+
+    // View this circuit in Quirk with
+    //   https://algassert.com/quirk#circuit={%22cols%22:[[1,%22H%22,%22X%22],[%22X%22,%22%E2%80%A2%22],[%22Z%22],[1,%22%E2%80%A2%22,%22X%22]]}
+    let n = 3; // number of qubits
+    let psi_0 = CMatrix.tensorPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
+    let L_1 = CMatrix.naryTensor( [ Sim.X, Sim.H, Sim.I ] );
+    let L_2 = CMatrix.tensor( Sim.I, Sim.CX.reverseEndianness() );
+    // This would also work:
+    // let L_2 = Sim.expand4x4ForNWires( Sim.CX, 1, 0, n );
+    let L_3 = CMatrix.naryTensor( [ Sim.I, Sim.I, Sim.Z ] );
+    let L_4 = CMatrix.tensor( Sim.CX, Sim.I );
+    // This would also work:
+    // let L_4 = Sim.expand4x4ForNWires( Sim.CX, 1, 2, n );
+    let psi_f = CMatrix.naryMult( [ L_4, L_3, L_2, L_1, psi_0 ] );
+    // Print the output state vector:
+    //console.log( psi_f.toString({binaryPrefixes:true}) );
+    // Print a summarized description of the computation:
     console.log(StringUtil.concatMultiline(
-        step3.toString(),
-        " * ", step2.toString({decimalPrecision:1}),
-        " * ", "...", // step1.toString({decimalPrecision:1}),
-        " * ", input.toString(),
-        " = ", output.toString({binaryPrefixes:true})
+        L_4.toString(),
+        " * ", L_3.toString(),
+        " * ", "...", // L_2.toString(),
+        " * ", "...", // L_1.toString({decimalPrecision:1}),
+        " * ", psi_0.toString(), // input
+        " = ", psi_f.toString({binaryPrefixes:true}) // output
     ));
 
-Each matrix takes up $O((2^N)^2)=O(4^N)$ space (one gigabyte for N=13 qubits, assuming 16 bytes per complex number), and calling CMatrix.mult() on two such matrices would cost $O((2^N)^3)=O(8^N)$ time.
-However, the call to naryMult() above causes the matrices to be multiplied right-to-left, because naryMult() checks the sizes of the matrices to optimize the multiplication order, and the right-most matrix passed to naryMult() is just a column vector of size $2^N \times 1$.  The matrix just before that has size $2^N \times 2^N$, and multiplying the two together costs $O((2^N)^2)=O(4^N)$ and produces another column vector, which gets multiplied by the next matrix before them, etc. 
-Hence, in this first approach, the space and time requirements of each layer of the circuit are $O((2^N)^2)=O(4^N)$.
-Notice in the last call to toString() above, we pass in {binaryPrefixes:true}; this causes bit strings like |000> to be printed in front of the matrix, as a reminder of the association between base states and matrix rows.
-The output is:
+Each L_i matrix takes up $O((2^n)^2)=O(4^n)$ space (one gigabyte for $n=13$ qubits, assuming 16 bytes per complex number), and calling CMatrix.mult() to multiply two such matrices would cost $O((2^n)^3)=O(8^n)$ time.
+However, the call to naryMult() above causes the matrices to be multiplied right-to-left, because naryMult() checks the sizes of the matrices to optimize the multiplication order, and the right-most matrix passed to naryMult() is just a column vector of size $2^n \times 1$.  The matrix just before that has size $2^n \times 2^n$, and multiplying the two together costs $O((2^n)^2)=O(4^n)$ time and produces another column vector, which gets multiplied by the next matrix before them, etc. 
+Hence, in the above approach, the space and time requirements of each layer of the circuit are $O((2^n)^2)=O(4^n)$.
 
-    [1,_,_,_,_,_,_,_]   [0.9+0.4i,0       ,0.1-0.4i,0       ,0       ,0       ,0       ,0       ]         [1]   |000>[0.302+0.479i]
-    [_,1,_,_,_,_,_,_]   [0       ,0.9+0.4i,0       ,0.1-0.4i,0       ,0       ,0       ,0       ]         [_]   |001>[0.198-0.125i]
-    [_,_,1,_,_,_,_,_]   [0.1-0.4i,0       ,0.9+0.4i,0       ,0       ,0       ,0       ,0       ]         [_]   |010>[0.302+0.125i]
-    [_,_,_,1,_,_,_,_] * [0       ,0.1-0.4i,0       ,0.9+0.4i,0       ,0       ,0       ,0       ] * ... * [_] = |011>[0.052-0.125i]
-    [_,_,_,_,_,_,1,_]   [0       ,0       ,0       ,0       ,0.9+0.4i,0       ,0.1-0.4i,0       ]         [_]   |100>[0.302+0.125i]
-    [_,_,_,_,_,_,_,1]   [0       ,0       ,0       ,0       ,0       ,0.9+0.4i,0       ,0.1-0.4i]         [_]   |101>[0.052-0.125i]
-    [_,_,_,_,1,_,_,_]   [0       ,0       ,0       ,0       ,0.1-0.4i,0       ,0.9+0.4i,0       ]         [_]   |110>[0.302+0.479i]
-    [_,_,_,_,_,1,_,_]   [0       ,0       ,0       ,0       ,0       ,0.1-0.4i,0       ,0.9+0.4i]         [_]   |111>[0.198-0.125i]
+Notice that in a call to toString() above, we can optionally pass in {binaryPrefixes:true}; this causes bit strings like |000> to be printed in front of the matrix, as a reminder of the association between base states and matrix rows.
+The output of the above code is:
 
-A second approach to simulating the same circuit is to not compute any explicit matrices of size $2^N \times 2^N$.  Instead, we only store the state vector of size $2^N \times 1$, and update it for each layer of the circuit.  The following code does this:
+    [1,_,_,_,_,_,_,_]   [1,0 ,0,0 ,0,0 ,0,0 ]               [1]   |000>[0     ]
+    [_,1,_,_,_,_,_,_]   [0,-1,0,0 ,0,0 ,0,0 ]               [_]   |001>[0     ]
+    [_,_,_,_,_,_,1,_]   [0,0 ,1,0 ,0,0 ,0,0 ]               [_]   |010>[0     ]
+    [_,_,_,_,_,_,_,1] * [0,0 ,0,-1,0,0 ,0,0 ] * ... * ... * [_] = |011>[-0.707]
+    [_,_,_,_,1,_,_,_]   [0,0 ,0,0 ,1,0 ,0,0 ]               [_]   |100>[0.707 ]
+    [_,_,_,_,_,1,_,_]   [0,0 ,0,0 ,0,-1,0,0 ]               [_]   |101>[0     ]
+    [_,_,1,_,_,_,_,_]   [0,0 ,0,0 ,0,0 ,1,0 ]               [_]   |110>[0     ]
+    [_,_,_,1,_,_,_,_]   [0,0 ,0,0 ,0,0 ,0,-1]               [_]   |111>[0     ]
 
-    input = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
-    step1 = Sim.qubitWiseMultiply(Sim.H,2,3,input,[]);
-    step1 = Sim.qubitWiseMultiply(Sim.SSY,1,3,step1,[]);
-    step1 = Sim.qubitWiseMultiply(Sim.SSX,0,3,step1,[]);
-    step2 = Sim.qubitWiseMultiply(Sim.SSX,1,3,step1,[]);
-    output = Sim.qubitWiseMultiply(Sim.X,1,3,step2,[[2,true]]);
+A second approach to simulating the same circuit is to not compute any explicit matrices of size $2^N \times 2^N$.  Instead, we only store the state vector of size $2^N \times 1$, and update it for each layer of the circuit, using qubit-wise multiplication.  The following code does this:
+
+    let n = 3; // number of qubits
+    let psi_0 = CMatrix.tensorPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
+    let step1 = Sim.qubitWiseMultiply(Sim.H,1,n,psi_0);
+    step1 = Sim.qubitWiseMultiply(Sim.X,2,n,step1);
+    let step2 = Sim.qubitWiseMultiply(Sim.X,0,n,step1,[[1,true]] /*one control bit on wire 1*/ );
+    let step3 = Sim.qubitWiseMultiply(Sim.Z,0,n,step2);
+    let psi_f = Sim.qubitWiseMultiply(Sim.X,2,n,step3,[[1,true]] /*one control bit on wire 1*/ );
+    // Print the output state vector:
+    console.log( psi_f.toString({binaryPrefixes:true}) );
+    // Print a summarized description of the computation:
     console.log(StringUtil.concatMultiline(
-        input.toString(),
+        psi_0.toString(), // input
         " -> ", step1.toString(),
         " -> ", step2.toString(),
-        " -> ", output.toString({binaryPrefixes:true})
+        " -> ", step3.toString(),
+        " -> ", psi_f.toString({binaryPrefixes:true}) // output
     ));
 
-In this second approach, the space and time requirements of each layer (or step) of the circuit are $O(2^N)$, so, much better than in the first approach.
+In this second approach, the space and time requirements of each layer (or step) of the circuit are $O(2^n)$, so, much better than in the previous approach.
+The Sim.qubitWiseMultiply() routine takes $O(2^n)$ time, and accepts an optional last parameter listing an arbitrary combination of control and anti-control bits, making it easy to implement, for example, Toffoli gates or other gates involving multiple control bits.
+
+<!--
 The key algorithm enabling this is in Sim.qubitWiseMultiply() method, which is inspired by Quirk's source code https://github.com/Strilanc/Quirk/ , in particular, Quirk's applyToStateVectorAtQubitWithControls() method in src/math/Matrix.js (<a href="https://github.com/Strilanc/Quirk/blob/master/src/math/Matrix.js#L678">link to specific line</a>).  This is essentially the "qubit-wise multiplication" algorithm described in chapter 6 of the book Viamontes, G. F., Markov, I. L., & Hayes, J. P. (2009) "Quantum circuit simulation", although their pseudocode contains errors and does not support control bits.
 
 More explanation and code examples appear in the slides under the doc folder of the repository.
+-->
+
+To implement SWAP gates, consider another example circuit, containing a SWAP gate and a controlled SWAP (or Fredkin) gate:
+
+![Example circuit 2](/doc/exampleCircuit-2.png)
+
+We can compute its output with this:
+
+    // View this circuit in Quirk with
+    //   https://algassert.com/quirk#circuit={%22cols%22:[[%22H%22],[%22Swap%22,1,%22Swap%22],[1,%22X%22,%22%E2%97%A6%22],[%22X%22,%22%E2%80%A2%22],[%22Y%22],[%22%E2%80%A2%22,%22Swap%22,%22Swap%22],[1,%22Z%22]]}
+    n = 3; // number of qubits
+    let ψ = CMatrix.tensorPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
+    ψ = Sim.qubitWiseMultiply(Sim.H,0,n,ψ);
+    ψ = Sim.applySwap(0,2,n,ψ);
+    ψ = Sim.qubitWiseMultiply(Sim.X,1,n,ψ,[[2,false]] /*one anti-control bit on wire 2*/ );
+    ψ = Sim.qubitWiseMultiply(Sim.X,0,n,ψ,[[1,true]] /*one control bit on wire 1*/ );
+    ψ = Sim.qubitWiseMultiply(Sim.Y,0,n,ψ);
+    ψ = Sim.applySwap(1,2,n,ψ,[[0,true]] /*one control bit on wire 0*/ );
+    ψ = Sim.qubitWiseMultiply(Sim.Z,1,n,ψ);
+    console.log( ψ.toString({binaryPrefixes:true}) );
+
+Consider another example, where we will compute partial traces.
+To simulate this circuit...
+
+![Example circuit 3](/doc/exampleCircuit-3.png)
+
+... we can use the following code snippet:
+
+    // View this circuit in Quirk with
+    //   https://algassert.com/quirk#circuit={%22cols%22:[[%22H%22,1,%22H%22],[%22%E2%80%A2%22,%22X%22]]}
+    n = 3; // number of qubits
+    let ψ = CMatrix.tensorPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
+    ψ = Sim.qubitWiseMultiply(Sim.H,0,n,ψ);
+    ψ = Sim.qubitWiseMultiply(Sim.H,2,n,ψ);
+    ψ = Sim.qubitWiseMultiply(Sim.X,1,n,ψ,[[0,true]] /*one control bit on wire 0*/ );
+    console.log( ψ.toString({binaryPrefixes:true}) );
+
+Let rho_210 be the $8 \times 8$ density matrix for all 3 qubits, and rho_ij be the $4 \times 4$ reduced density matrix for qubits i and j, and rho_i be the $2 \times 2$ reduced density matrix for qubit i.  Here is one way to compute all the reduced matrices:
+
+    let rho_210 = Sim.computeDensityMatrix( n, ψ );
+    let rho_0 = Sim.partialTrace( n, rho_210, true, null, [1,2], true /* the preceding list says which qubits to trace out */ );
+    let rho_1 = Sim.partialTrace( n, rho_210, true, null, [0,2], true );
+    let rho_2 = Sim.partialTrace( n, rho_210, true, null, [0,1], true );
+    let rho_10 = Sim.partialTrace( n, rho_210, true, null, [2], true );
+    let rho_20 = Sim.partialTrace( n, rho_210, true, null, [1], true );
+    let rho_21 = Sim.partialTrace( n, rho_210, true, null, [0], true );
+
+Rather than passing in a list of qubits to trace out, we can instead pass in a list of qubits to keep,
+which can simplify things, e.g.
+
+    let rho_0 = Sim.partialTrace( n, rho_210, true, null, [0], false /* the preceding list says which qubits to keep */ );
+
+In the above examples, we explicitly compute the full density matrix rho_210.  However, computing rho_210 from the state vector requires $O((2^n)^2) = O(4^n)$ time and space which is expensive for large $n$.
+Another approach is to pass in the state vector to the partialTrace() routine,
+which saves a huge amount of time for large $n$:
+
+    let rho_0 = Sim.partialTrace( n, null, true, ψ, [0], false );
+    let rho_1 = Sim.partialTrace( n, null, true, ψ, [1], false );
+    let rho_2 = Sim.partialTrace( n, null, true, ψ, [2], false );
+    let rho_10 = Sim.partialTrace( n, null, true, ψ, [2], true );
+    let rho_20 = Sim.partialTrace( n, null, true, ψ, [1], true );
+    let rho_21 = Sim.partialTrace( n, null, true, ψ, [0], true );
+
+Printing the reduced density matrices can be done with statements like
+
+    console.log(StringUtil.concatMultiline(
+        "rho_2 = ", rho_2.toString(),
+        ", rho_10 = ", rho_10.toString()
+    ));
+    console.log(StringUtil.concatMultiline(
+        "rho_0 = ", rho_0.toString(),
+        ", rho_21 = ", rho_21.toString()
+    ));
+    console.log( "rho_20 =\n" + rho_20.toString() );
+    console.log( "rho_1 =\n" + rho_1.toString() );
+
+Given the $2 \times 2$ reduced density matrix rho_i for qubit i, we can compute several statistics associated with qubit i.
+The source code for the routine computeStatsFor2x2DensityMatrix() shows how to compute
+the qubit's phase and purity,
+its Bloch sphere coordinates,
+its linear entropy and von Neumann entropy,
+and the probability of measuring a 1 on that qubit.
+
+Given the $4 \times 4$ reduced density matrix rho_ij for qubits i and j, we can compute several statistics associated with the pair of qubits i and j.
+For more about this, in the source code, see the routines
+computePairwiseQubitCorrelations(),
+computePairwiseQubitConcurrences(),
+computePairwiseQubitPurity(),
+computePairwiseQubitVonNeumannEntropy()
+which compute statistics for every pair of qubits.
+
+We can also compute the Second Stabilizer Rényi Entropy (SSRE) to quantify magic of a set of qubits.
+We do this by finding the $2^k \times 2^k$ reduced density matrix for the $k$ qubits of interest,
+and then call the computeSSREMagic() routine.
+See the comments preceding the definition of that routine in the source code for an example of how to call it.
+
 
 **Circuit and Qubit Statistics**
 
-From the amplitudes output by muqcs, we can easily find the probability of each computational basis state.
+Here we consider in more detail a particular circuit and the statistics that can be computed for it, and compare these to the output of IBM Quantum Composer and of Quirk, to provide convincing evidence that Muqcs correctly computes these statistics.
+
+From the amplitudes of an output state vector, we can easily find the probability of each computational basis state.
 In addition, muqcs can compute the ($2^N \times 2^N$) density matrix for a give state vector,
 and also compute the (2×2) reduced density matrix (using the partial trace) for each qubit, from which we can compute
 the phase, Bloch sphere coordinates, and purity (also called 'reduced purity' or 'purity of reduced state') for each qubit.
@@ -161,8 +300,7 @@ The purity for a single qubit varies from 0.5 to 1.0 and indicates how entangled
 Here is an example computing these statistics with muqcs:
 
     let N = 4; // total qubits
-    input = CMatrix.naryTensor( [ Sim.ketZero /*q3*/, Sim.ketZero /*q2*/,
-                                  Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
+    input = CMatrix.tensorPower(Sim.ketZero,N);
     step1 = CMatrix.naryTensor( [ Sim.RY(45) /*q3*/, Sim.RX_90deg /*q2*/,
                                   Sim.RX_90deg /*q1*/, Sim.RX(45) /*q0*/ ] );
     step2 = CMatrix.naryTensor( [ Sim.RX(45) /*q3*/, Sim.RZ(120) /*q2*/,
@@ -207,8 +345,6 @@ https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B%7B%22id%22%3A%22Rxft%
 
 ![Qubit statistics in Quirk](/doc/qubit-stats-quirk.png)
 
-There are also subroutines (Sim.computePairwiseQubitConcurrences() and Sim.computePairwiseQubitVonNeumannEntropy())
-that compute pairwise concurrence between qubits and the von Neumann entropy of each pair of qubits, to quantify entanglement and mixedness.
 
 **Conventions**
 
