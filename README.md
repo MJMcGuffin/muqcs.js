@@ -6,8 +6,8 @@ The code is contained entirely in a single file, and defines a small class for c
 
 Unlike other javascript quantum circuit simulators, Muqcs implements partial trace and can compute
 reduced density matrices, from which several statistics can be computed:
-the phase, probability, purity, linear entropy, and von Neumann entropy (to quantify mixedness) of individual qubits;
-the concurrence (to quantify entanglement), correlation, purity, linear entropy, and von Neumann entropy of pairs of qubits;
+the phase, probability, purity, linear entropy, and von Neumann entropy (to quantify mixedness), and Bloch sphere coordinates of individual qubits;
+the concurrence (to quantify entanglement), correlation, purity, and von Neumann entropy of pairs of qubits;
 and the stabilizer Rényi entropy (to quantify magic) of a set of qubits.
 
 On my 2022 laptop, running inside Chrome, Muqcs can simulate circuits on N=20 qubits at a speed of less than 100ms per gate, and can also compute all N(N-1)/2 4×4 2-qubit partial traces and all N 2×2 1-qubit partial traces in under 22 seconds, all without ever computing any explicit $2^N \times 2^N$ matrices.
