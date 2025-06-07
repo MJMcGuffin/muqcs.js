@@ -27,6 +27,8 @@ $\newcommand{\myket}[1]{|#1 \rangle}$
 $\newcommand{\mybraket}[2]{\langle #1|#2 \rangle}$
 $\newcommand{\myketbra}[2]{|#1 \rangle \langle #2|}$
 
+[![video overview of Muqcs](https://img.youtube.com/vi/b6OqXkqPBeY/0.jpg)](https://www.youtube.com/watch?v=b6OqXkqPBeY)
+
 **Creating and Manipulating Matrices**
 
 To create some matrices and print out their contents, we can do
