@@ -111,6 +111,17 @@ class Util {
         }
         return angle;
     }
+    // returns true if the given numbers are approximately equal, within the given tolerance
+    static approximatelyEqual(a,b,tolerance=precisionForApproximateComparison,printMessage=true) {
+        let delta = Math.abs( a - b );
+        if ( delta > tolerance ) {
+            if ( printMessage ) {
+                console.log(`Util.approximatelyEqual(): difference of ${delta} found`);
+            }
+            return false;
+        }
+        return true;
+    }
 }
 
 class StringUtil {
@@ -1390,14 +1401,21 @@ class Sim { // Simulator
         */
 
         let [ar, ai, br, bi, cr, ci, dr, di] = dm._m;
-        // TODO you should assert that all these equalities are approximately true: ai===0, di===0, br===cr, bi=== -ci
+        Util.assert(
+            // Diagonal elements should be real-valued probabilities that sum to 1
+            Util.approximatelyEqual(ai,0) && Util.approximatelyEqual(di,0) && Util.approximatelyEqual(ar+dr,1)
+            && ar >= 0 && dr >= 0
+            // Off-diagonal elements should be conjugates
+            && Util.approximatelyEqual(br,cr) && Util.approximatelyEqual(bi,-ci),
+            "Sim.computeStatsFor2x2DensityMatrix(): unexpected condition"
+        );
         let x = br + cr;
         let y = ci - bi;
         let z = ar - dr;
         let radius = Math.sqrt(x*x + y*y + z*z);
         let phase = Util.angleIn2D(x,y);
         let theta = Util.angleIn2D(z,Math.sqrt(x*x+y*y));
-        let probabilityOfOne = (1-z)/2;
+        let probabilityOfOne = dr; // = (1-z)/2;
         let purity = CMatrix.mult( dm, dm ).trace();
         let cosine_theta_over_2 = Math.cos(theta/2);
         let sine_theta_over_2 = Math.sin(theta/2);
