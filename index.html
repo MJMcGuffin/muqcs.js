@@ -2105,6 +2105,8 @@ class Sim { // Simulator
         // CX is also often called CNOT
         Sim.CX = CMatrix.create([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]).reverseEndianness( ! usingTextbookConvention );
         Sim.SWAP_2 = Sim.SWAP(0,1,2); // a swap gate for a two-qubit circuit
+        Sim.iSWAP = CMatrix.create([[1,0,0,0],[0,0,Complex.i,0],[0,Complex.i,0,0],[0,0,0,1]]);
+        Sim.sqrt_SWAP = CMatrix.create([[1,0,0,0],[0,new Complex(0.5,0.5),new Complex(0.5,-0.5),0],[0,new Complex(0.5,-0.5),new Complex(0.5,0.5),0],[0,0,0,1]]);
 
         // Here we define some magic states.
         //
