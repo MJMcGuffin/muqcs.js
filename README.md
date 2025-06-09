@@ -357,7 +357,7 @@ In a circuit with N qubits, the wires are numbered 0 for the top wire to (N-1) f
 
 **Limitations**
 
-There is currently no support for measurement gates, nor for iSWAP gates.
+There is currently no support for measurement gates, nor for multi-qubit gates like <em>i</em>SWAP or $\sqrt{{\rm SWAP}}$.  These wouldn't be too difficult to add, however.
 
 The code depends on <a href="https://mathjs.org/">mathjs</a>,
 but only in one subroutine (Sim.eigendecomposition()) which is used to compute concurrence and von Neumann entropy.
