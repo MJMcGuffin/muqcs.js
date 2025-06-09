@@ -1065,6 +1065,65 @@ class Sim { // Simulator
         return result;
     }
 
+    static qubitWiseMultiply_multiQubitGate(
+        k, // number of wires covered by U, 1 <= k
+        U, // a square matrix of size 2^k x 2^k, 1 <= k
+        i_w, // index of first wire on which to apply U, 0 <= i_w <= n-k
+        n, // number of qubits in the circuit, 1 <= k <= n
+        stateVector, // the state vector to transform; a matrix of size (2**n)x1, i.e. a column vector
+        listOfControlBits = [] // a list of pairs of the form [wire_index, flag] where 0<=wire_index<n and flag is true for a control bit and false for an anti-control bit
+    ) {
+        let sizeOfStateVector = 1 << n;
+        Util.assert( 1<=k && k<=n, "Sim.qubitWiseMultiply_multiQubitGate(): invalid index" );
+        Util.assert( 0<=i_w && i_w<=n-k, "Sim.qubitWiseMultiply_multiQubitGate(): invalid index" );
+        Util.assert( U._rows===U._cols && U._rows===(1<<k), "Sim.qubitWiseMultiply_multiQubitGate(): invalid size" );
+        Util.assert( stateVector._rows===sizeOfStateVector && stateVector._cols===1, "Sim.qubitWiseMultiply_multiQubitGate(): state vector has invalid size" );
+
+        let inclusionMask = 0;
+        let desiredValueMask = 0;
+        for ( let iter of listOfControlBits ) {
+            let [wireIndex,flag] = iter;
+            if ( usingTextbookConvention )
+                wireIndex = n-1 - wireIndex;
+            let bit = 1 << wireIndex;
+            inclusionMask |= bit;
+            if ( flag )
+                desiredValueMask |= bit;
+        }
+
+        if ( usingTextbookConvention )
+            i_w = n-1 - i_w;
+        let tempVector = new CMatrix( 1 << k, 1 );
+        let sizeOfSubBlock = 1 << i_w; // could be 1, 2, 4, ...
+        let sizeOfBlock = sizeOfSubBlock << k;
+        let result = stateVector.copy();
+        for ( let indexOfStartOfBlock = 0; indexOfStartOfBlock < sizeOfStateVector; indexOfStartOfBlock += sizeOfBlock ) {
+            for ( let offsetWithinBlock = 0; offsetWithinBlock < sizeOfSubBlock; offsetWithinBlock ++ ) {
+                Util.assert( indexOfStartOfBlock | offsetWithinBlock === indexOfStartOfBlock + offsetWithinBlock, "Sim.qubitWiseMultiply_multiQubitGate(): unexpected numbers" );
+                let i1 = indexOfStartOfBlock | offsetWithinBlock; // equivalent to a sum
+                if ( (i1 & inclusionMask) !== desiredValueMask )
+                    continue;
+
+                // Collect inputs into a small contiguous vector.
+                let i2 = i1;
+                for ( let i3 = 0; i3 < tempVector._rows; i3 ++ ) {
+                    tempVector.set( i3, 0, stateVector.get( i2, 0 ) );
+                    i2 += sizeOfSubBlock;
+                }
+
+                let transformedVector = CMatrix.mult( U, tempVector );
+
+                // Scatter outputs.
+                i2 = i1;
+                for ( let i3 = 0; i3 < tempVector._rows; i3 ++ ) {
+                    result.set( i2, 0, transformedVector.get( i3, 0 ) );
+                    i2 += sizeOfSubBlock;
+                }
+            }
+        }
+        return result;
+    }
+
     // Returns the given state vector |stateVector> after swapping wires i and j.
     // In other words, implements a SWAP gate on qubits i and j.
     // Avoids computing an explicit swap matrix of size (2**n)x(2**n), saving much memory and time.
