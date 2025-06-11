@@ -27,10 +27,17 @@ $\newcommand{\myket}[1]{|#1 \rangle}$
 $\newcommand{\mybraket}[2]{\langle #1|#2 \rangle}$
 $\newcommand{\myketbra}[2]{|#1 \rangle \langle #2|}$
 
+**Companion Video**
+
 [![video overview of Muqcs](https://img.youtube.com/vi/b6OqXkqPBeY/0.jpg)](https://youtu.be/b6OqXkqPBeY)
 <br/>
-<a href="https://youtu.be/b6OqXkqPBeY">Click to view video</a>
+<a href="https://youtu.be/b6OqXkqPBeY">View the video</a>
 
+
+**Companion Paper**
+
+A companion paper at <a href="https://arxiv.org/abs/2506.08142">https://arxiv.org/abs/2506.08142</a> explains background concepts and the algorithms used in Muqcs.
+Please cite that paper if you would like to cite the Muqcs software in your own academic work.
 
 **Creating and Manipulating Matrices**
 
