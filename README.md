@@ -31,7 +31,7 @@ $\newcommand{\myketbra}[2]{|#1 \rangle \langle #2|}$
 
 **Companion Video**
 
-[![video overview of Muqcs](https://img.youtube.com/vi/b6OqXkqPBeY/0.jpg)](https://youtu.be/b6OqXkqPBeY)
+[![video overview of Muqcs](/doc/video-thumbnail-2.png)](https://youtu.be/b6OqXkqPBeY)
 <br/>
 <a href="https://youtu.be/b6OqXkqPBeY">View the video</a>
 
