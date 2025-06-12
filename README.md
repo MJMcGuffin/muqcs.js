@@ -15,17 +15,19 @@ On my 2022 laptop, running inside Chrome, Muqcs can simulate circuits on N=20 qu
 To run the code, <a href="https://mjmcguffin.github.io/muqcs.js/">load the html file</a> into a browser like Chrome, and then open a console (in Chrome, this is done by selecting 'Developer Tools').  From the console prompt, you can call functions in the code and see output printed to the console.
 
 Muqcs is named in allusion to <a href="https://sourceforge.net/projects/mush/">mush</a>, Moser's Useless SHell, written by Derrick Moser (dtmoser).
-<!-- The commands \bra, \ket, \braket used to render properly, but now they don't, so I'm defining my own versions here. Unfortunately, these render with extra spaces when used with the symbols -, +, -i, +i, but I don't know how to fix this as none of \! nor \hspace{-3mu} nor \mspace{-3mu} nor \kern{-3mu} work. -->
+<!-- 2025-06-01: The commands \bra, \ket, \braket used to render properly, but now they don't, so I'm defining my own versions here. Unfortunately, these render with extra spaces when used with the symbols -, +, -i, +i, but I don't know how to fix this as none of \! nor \hspace{-3mu} nor \mspace{-3mu} nor \kern{-3mu} work. -->
 <!-- Using \left, \right makes the symbols excessively big when the expression inside has a subscript.
 $\newcommand{\mybra}[1]{\left\langle #1 \right|}$
 $\newcommand{\myket}[1]{\left| #1 \right\rangle}$
 $\newcommand{\mybraket}[2]{\left\langle #1 \middle| #2 \right\rangle}$
 $\newcommand{\myketbra}[2]{\left| #1 \right\rangle \left\langle #2 \right|}$
 -->
+<!-- 2025-06-12: now \newcommand seems to have stopped working, so I will revert to using \bra, \ket, \braket
 $\newcommand{\mybra}[1]{\langle #1|}$
 $\newcommand{\myket}[1]{|#1 \rangle}$
 $\newcommand{\mybraket}[2]{\langle #1|#2 \rangle}$
 $\newcommand{\myketbra}[2]{|#1 \rangle \langle #2|}$
+-->
 
 **Companion Video**
 
@@ -78,7 +80,7 @@ There are also some predefined vectors and matrices.  For example,
 
     console.log(Sim.ketOne.toString());
 
-prints the column vector $\myket{1}$:
+prints the column vector $\ket{1}$:
 
     [_]
     [1]
@@ -111,8 +113,8 @@ To simulate a circuit, one approach is to compute an explicit matrix for each la
 
 ![Example circuit 1](/doc/exampleCircuit-1.png)
 
-The input state vector $\myket{\psi_0}$ is an $8 \times 1$ column vector, computed as the tensor product
-$\myket{\psi_0}$ = $\myket{0}$ $\otimes$ $\myket{0}$ $\otimes$ $\myket{0}$ = $\myket{000}$ = $\myket{0}^{\otimes 3}$,
+The input state vector $\ket{\psi_0}$ is an $8 \times 1$ column vector, computed as the tensor product
+$\ket{\psi_0}$ = $\ket{0}$ $\otimes$ $\ket{0}$ $\otimes$ $\ket{0}$ = $\ket{000}$ = $\ket{0}^{\otimes 3}$,
 which can be computed in any of the following ways:
 
     psi_0 = CMatrix.tensor( Sim.ketZero, CMatrix.tensor( Sim.ketZero, Sim.ketZero ) );
@@ -371,12 +373,12 @@ but only in one subroutine (Sim.eigendecomposition()) which is used to compute c
 
 **Background Notes**
 
-Think of bra ($\mybra{a}$) as a row vector, and ket ($\myket{a}$) as a column vector equal to the conjugate transpose of the bra.
-Then, multiplying a bra by a ket yields a dot product (i.e., $(\mybra{a})(\myket{b})$, abbreviated to $\mybraket{a}{b}$, yields a 1×1 matrix);
-multiplying a bra by its corresponding ket ($\mybraket{a}{a}$) yields a dot product equal to the
+Think of bra ($\bra{a}$) as a row vector, and ket ($\ket{a}$) as a column vector equal to the conjugate transpose of the bra.
+Then, multiplying a bra by a ket yields a dot product (i.e., $(\bra{a})(\ket{b})$, abbreviated to $\braket{a|b}$, yields a 1×1 matrix);
+multiplying a bra by its corresponding ket ($\braket{a|a}$) yields a dot product equal to the
 sum of the squared magnitudes of the complex numbers in the bra;
-and multiplying a ket by its corresponding bra ($\myket{a}\mybra{a}$) yields a square matrix called
-the density matrix, whose trace (sum of elements along the diagonal) is equal to $Tr(\myket{a}\mybra{a}) = \mybraket{a}{a}$.
+and multiplying a ket by its corresponding bra ($\ket{a}\bra{a}$) yields a square matrix called
+the density matrix, whose trace (sum of elements along the diagonal) is equal to $Tr(\ket{a}\bra{a}) = \braket{a|a}$.
 
 Some predefined basis vectors:
 
@@ -387,15 +389,15 @@ Some predefined basis vectors:
 |  $\langle 1 \|$  | `Sim.braOne` | 1x2 | <pre>[ 0 1 ]</pre> | |
 |  $\| 1 \rangle$  | `Sim.ketOne` | 2x1 | <pre>[ 0 ]<br>[ 1 ]</pre> | |
 |  $\langle + \|$  | `Sim.braPlus` | 1x2 | <pre>(1/sqrt(2)) [ 1 1 ]</pre> | |
-|  $\| + \rangle$  | `Sim.ketPlus` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ 1 ]</pre> | $\myket{+} = \frac{1}{\sqrt{2}}(\myket{0} + \myket{1})$ |
+|  $\| + \rangle$  | `Sim.ketPlus` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ 1 ]</pre> | $\ket{+} = \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})$ |
 |  $\langle - \|$  | `Sim.braMinus` | 1x2 | <pre>1/sqrt(2) [ 1 -1 ]</pre> | |
 |  $\| - \rangle$  | `Sim.ketMinus` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -1 ]</pre> | |
-|  $\mybra{+i}$  | `Sim.braPlusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 -i ]</pre> |  |
-|  $\myket{+i}$  | `Sim.ketPlusI` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ i ]</pre> | $\myket{+i} = \frac{1}{\sqrt{2}}(\myket{0} + i\myket{1})$ |
-|  $\mybra{-i}$  | `Sim.braMinusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 i ]</pre> | |
-|  $\myket{-i}$  | `Sim.ketMinusI` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -i ]</pre> | |
+|  $\bra{+i}$  | `Sim.braPlusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 -i ]</pre> |  |
+|  $\ket{+i}$  | `Sim.ketPlusI` | 2x1 | <pre>(1/sqrt(2)) [ 1 ]<br>            [ i ]</pre> | $\ket{+i} = \frac{1}{\sqrt{2}}(\ket{0} + i\ket{1})$ |
+|  $\bra{-i}$  | `Sim.braMinusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 i ]</pre> | |
+|  $\ket{-i}$  | `Sim.ketMinusI` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -i ]</pre> | |
 
-Consider a circuit of $N$ qubits where the overall state of the circuit is pure, i.e., none of the qubits are entangled with the environment.  The state of the $N$ qubits can be described using a $2^N \times 1$ (column) state vector $\| \psi \rangle$, or using a $2^N \times 2^N$ density matrix $D = \myket{\psi}\mybra{\psi}$.  To better understand some subset of $M$ qubits within the circuit, we can compute a partial trace of $D$ to "trace out" or "trace over" the other qubits, yielding a $2^M \times 2^M$ reduced density matrix $R$.  The purity of $R$ is given by the trace of $R^2$, and one minus that purity gives the linear entropy, which is an approximation of the von Neumann entropy (https://www.quantiki.org/wiki/linear-entropy) of the subset of $M$ qubits.  Purity ranges from $1/(2^M)$ to 1.0, linear entropy ranges from 0.0 to $1-1/(2^M)$, and von Neumann entropy ranges from 0.0 to M.  Entropy is a measure of the mixedness (the opposite of purity) of the subset of qubits, and mixedness is, roughly speaking, how entangled the subset of qubits is with other qubits outside the subset.  Concurrence is a measure of how much the qubits are entangled with other qubits within the same subset.  There's a nice table at https://physics.stackexchange.com/questions/643578/what-are-the-relations-between-mixed-pure-and-separable-entangled-states showing types of states, by crossing {pure, mixed} $\times$ {product, separable, entangled}.
+Consider a circuit of $N$ qubits where the overall state of the circuit is pure, i.e., none of the qubits are entangled with the environment.  The state of the $N$ qubits can be described using a $2^N \times 1$ (column) state vector $\| \psi \rangle$, or using a $2^N \times 2^N$ density matrix $D = \ket{\psi}\bra{\psi}$.  To better understand some subset of $M$ qubits within the circuit, we can compute a partial trace of $D$ to "trace out" or "trace over" the other qubits, yielding a $2^M \times 2^M$ reduced density matrix $R$.  The purity of $R$ is given by the trace of $R^2$, and one minus that purity gives the linear entropy, which is an approximation of the von Neumann entropy (https://www.quantiki.org/wiki/linear-entropy) of the subset of $M$ qubits.  Purity ranges from $1/(2^M)$ to 1.0, linear entropy ranges from 0.0 to $1-1/(2^M)$, and von Neumann entropy ranges from 0.0 to M.  Entropy is a measure of the mixedness (the opposite of purity) of the subset of qubits, and mixedness is, roughly speaking, how entangled the subset of qubits is with other qubits outside the subset.  Concurrence is a measure of how much the qubits are entangled with other qubits within the same subset.  There's a nice table at https://physics.stackexchange.com/questions/643578/what-are-the-relations-between-mixed-pure-and-separable-entangled-states showing types of states, by crossing {pure, mixed} $\times$ {product, separable, entangled}.
 
 A matrix $M$ is *unitary* if its inverse is equal to its conjugate transpose, i.e., $M^{-1} = M^{\dagger}$
 
