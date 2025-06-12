@@ -38,7 +38,7 @@ $\newcommand{\myketbra}[2]{|#1 \rangle \langle #2|}$
 
 **Companion Paper**
 
-A companion paper at <a href="https://arxiv.org/abs/2506.08142">https://arxiv.org/abs/2506.08142</a> explains background concepts and the algorithms used in Muqcs.
+A companion paper at <a href="https://arxiv.org/abs/2506.08142">https://arxiv.org/abs/2506.08142</a> explains background concepts and algorithms used in Muqcs.
 Please cite that paper if you would like to cite the Muqcs software in your own academic work.
 
 **Creating and Manipulating Matrices**
@@ -96,7 +96,7 @@ prints the 4×4 matrix for the CNOT (also called CX) gate:
     [_,_,1,_]
     [_,1,_,_]
 
-Notice that zeros are replaced with underscores to make it easier for a human to read sparse matrices (to change this behavior, you can call toString({suppressZeros:false}) or toString({charToReplaceSuppressedZero:'.'})).  You might also notice that the matrix for the CNOT gate looks different from the way it is usually presented in textbooks or other sources.  This is related to the ordering of bits and ordering of tensor products.  Search for the usingTextbookConvention flag in the source code for comments that explain this, and set that flag to true if you prefer the textbook ordering.  We can also call a method on a matrix (or a vector) to change its ordering:
+Notice that zeros are replaced with underscores to make it easier for a human to read sparse matrices - a form of pretty printing (to change this behavior, you can call toString({suppressZeros:false}) or toString({charToReplaceSuppressedZero:'.'})).  You might also notice that the matrix for the CNOT gate looks different from the way it is usually presented in textbooks or other sources.  This is related to the ordering of bits and ordering of tensor products.  Search for the usingTextbookConvention flag in the source code for comments that explain this, and set that flag to true if you prefer the textbook ordering.  We can also call a method on a matrix (or a vector) to change its ordering:
 
     console.log(Sim.CX.reverseEndianness().toString());
 
@@ -397,7 +397,7 @@ Some predefined basis vectors:
 |  $\bra{-i}$  | `Sim.braMinusI` | 1x2 | <pre>(1/sqrt(2)) [ 1 i ]</pre> | |
 |  $\ket{-i}$  | `Sim.ketMinusI` | 2x1 | <pre>(1/sqrt(2)) [  1 ]<br>            [ -i ]</pre> | |
 
-Consider a circuit of $N$ qubits where the overall state of the circuit is pure, i.e., none of the qubits are entangled with the environment.  The state of the $N$ qubits can be described using a $2^N \times 1$ (column) state vector $\| \psi \rangle$, or using a $2^N \times 2^N$ density matrix $D = \ket{\psi}\bra{\psi}$.  To better understand some subset of $M$ qubits within the circuit, we can compute a partial trace of $D$ to "trace out" or "trace over" the other qubits, yielding a $2^M \times 2^M$ reduced density matrix $R$.  The purity of $R$ is given by the trace of $R^2$, and one minus that purity gives the linear entropy, which is an approximation of the von Neumann entropy (https://www.quantiki.org/wiki/linear-entropy) of the subset of $M$ qubits.  Purity ranges from $1/(2^M)$ to 1.0, linear entropy ranges from 0.0 to $1-1/(2^M)$, and von Neumann entropy ranges from 0.0 to M.  Entropy is a measure of the mixedness (the opposite of purity) of the subset of qubits, and mixedness is, roughly speaking, how entangled the subset of qubits is with other qubits outside the subset.  Concurrence is a measure of how much the qubits are entangled with other qubits within the same subset.  There's a nice table at https://physics.stackexchange.com/questions/643578/what-are-the-relations-between-mixed-pure-and-separable-entangled-states showing types of states, by crossing {pure, mixed} $\times$ {product, separable, entangled}.
+Consider a circuit of $N$ qubits where the overall state of the circuit is pure (implying that none of the qubits are entangled with the environment).  The state of the $N$ qubits can be described using a $2^N \times 1$ (column) state vector $\| \psi \rangle$, or using a $2^N \times 2^N$ density matrix $D = \ket{\psi}\bra{\psi}$.  To better understand some subset of $M$ qubits within the circuit, we can compute a partial trace of $D$ to "trace out" or "trace over" the other qubits, yielding a $2^M \times 2^M$ reduced density matrix $R$.  The purity of $R$ is given by the trace of $R^2$, and one minus that purity gives the linear entropy, which is an approximation of the von Neumann entropy (https://www.quantiki.org/wiki/linear-entropy) of the subset of $M$ qubits.  Purity ranges from $1/(2^M)$ to 1.0, linear entropy ranges from 0.0 to $1-1/(2^M)$, and von Neumann entropy ranges from 0.0 to M.  Entropy is a measure of the mixedness (the opposite of purity) of the subset of qubits.  Concurrence is a measure of how much the qubits are entangled with other qubits within the same subset.  There's a nice table at https://physics.stackexchange.com/questions/643578/what-are-the-relations-between-mixed-pure-and-separable-entangled-states showing types of states, by crossing {pure, mixed} $\times$ {product, separable, entangled}.  For more explanation of mixed and entangled states, you might like the explanations in <a href="https://arxiv.org/abs/2506.08142">our tutorial paper</a>.
 
 A matrix $M$ is *unitary* if its inverse is equal to its conjugate transpose, i.e., $M^{-1} = M^{\dagger}$
 
