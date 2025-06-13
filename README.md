@@ -6,7 +6,7 @@ The code is contained entirely in a single file, and defines a small class for c
 
 Unlike other javascript quantum circuit simulators, Muqcs implements partial trace and can compute
 arbitrary reduced density matrices, from which several statistics can be computed:
-the phase, probability, purity, linear entropy, and von Neumann entropy (to quantify mixedness), and Bloch sphere coordinates of individual qubits;
+the phase, probability, purity, linear entropy, von Neumann entropy (to quantify mixedness), and Bloch sphere coordinates of individual qubits;
 the concurrence (to quantify entanglement), correlation, purity, and von Neumann entropy of pairs of qubits;
 and the stabilizer Rényi entropy (to quantify magic) of a set of qubits.
 
