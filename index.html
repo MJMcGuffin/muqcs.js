@@ -113,6 +113,7 @@ class Util {
     }
     // returns true if the given numbers are approximately equal, within the given tolerance
     static approximatelyEqual(a,b,tolerance=precisionForApproximateComparison,printMessage=true) {
+        Util.assert(typeof(a)==="number" && typeof(b)==="number", "Util.approximatelyEqual(): unknown type");
         let delta = Math.abs( a - b );
         if ( delta > tolerance ) {
             if ( printMessage ) {
@@ -268,6 +269,18 @@ class Complex {
             return new Complex( c1 * c2._r, c1 * c2._i );
         }
         return c1 * c2;
+    }
+    // returns true if the given numbers are approximately equal, within the given tolerance
+    static approximatelyEqual(a,b,tolerance=precisionForApproximateComparison,printMessage=true) {
+        Util.assert(a instanceof Complex && b instanceof Complex, "Complex.approximatelyEqual(): unknown type");
+        let delta = Complex.diff(a,b).mag();
+        if ( delta > tolerance ) {
+            if ( printMessage ) {
+                console.log(`Complex.approximatelyEqual(): difference of ${delta} found`);
+            }
+            return false;
+        }
+        return true;
     }
 }
 Complex.i = new Complex(0,1);
@@ -626,7 +639,7 @@ class CMatrix {
     static approximatelyEqual(a,b,tolerance=precisionForApproximateComparison,printMessage=true) {
         Util.assert(a instanceof CMatrix && b instanceof CMatrix,"CMatrix.approximatelyEqual(): wrong type");
         Util.assert(a._rows === b._rows && a._cols === b._cols, "CMatrix.approximatelyEqual(): incompatible dimensions" );
-        for ( let j = a._m.length-1; j >= 0; j-- ) {
+        for ( let j = a._m.length-1; j >= 0; j-- ) { // check each component
             let delta = Math.abs( a._m[j] - b._m[j] );
             if ( delta > tolerance ) {
                 if ( printMessage ) {
