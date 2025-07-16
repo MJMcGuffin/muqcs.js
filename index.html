@@ -2184,7 +2184,7 @@ function performRegressionTest( verbose=true ) {
     expectedOutput = CMatrix.createColVector([ 0.707, 0, 0, 0.707 ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'872ec24acc' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
     // Simulate another circuit on two qubits
@@ -2211,7 +2211,7 @@ function performRegressionTest( verbose=true ) {
     expectedOutput = CMatrix.createColVector([ 0,1,0,0 ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'ec53d19216' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
     // Simulate another circuit on two qubits
@@ -2238,7 +2238,7 @@ function performRegressionTest( verbose=true ) {
     expectedOutput = CMatrix.createColVector([ 0,0,1,0 ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'2bbcc438a1' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
     // Simulate another circuit on two qubits
@@ -2265,7 +2265,7 @@ function performRegressionTest( verbose=true ) {
     expectedOutput = CMatrix.createColVector([ new Complex(0,0.5),0.5,0.5,new Complex(0,0.5) ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'7e132563e4' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
     // Simulate another circuit on two qubits
@@ -2287,7 +2287,7 @@ function performRegressionTest( verbose=true ) {
     expectedOutput = CMatrix.createColVector([ new Complex(0.5,0),new Complex(-0.35355,-0.35355),new Complex(0,-0.5),new Complex(-0.35355,-0.35355) ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'be0c19df98' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
     // Simulate another circuit on two qubits
@@ -2314,7 +2314,7 @@ function performRegressionTest( verbose=true ) {
     expectedOutput = CMatrix.createColVector([ new Complex(0.42678, 0.67678),new Complex(0.28033, -0.17678),new Complex(0.42678, 0.17678),new Complex(0.07322, -0.17678) ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'21e10d99d6' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
     // Simulate a circuit on three qubits
@@ -2355,7 +2355,7 @@ function performRegressionTest( verbose=true ) {
     ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'1c4fee293c' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
 
@@ -2398,7 +2398,7 @@ function performRegressionTest( verbose=true ) {
     ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'1c4dab5619' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
 
@@ -2428,7 +2428,7 @@ function performRegressionTest( verbose=true ) {
     ));
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'23abd31026' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
 
@@ -2463,7 +2463,7 @@ function performRegressionTest( verbose=true ) {
     ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'1c58b99eac' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
     // Simulate another circuit on two qubits
@@ -2498,7 +2498,7 @@ function performRegressionTest( verbose=true ) {
     ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'723049b630' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
     // Simulate another circuit on three qubits
@@ -2536,7 +2536,7 @@ function performRegressionTest( verbose=true ) {
     ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'c7cdcdc026' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
     // Simulate the same circuit, but this time without using explicit large matrices.
@@ -2561,7 +2561,7 @@ function performRegressionTest( verbose=true ) {
     ));
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'45cacd1026' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
 
@@ -2609,7 +2609,7 @@ function performRegressionTest( verbose=true ) {
     ]);
     success = CMatrix.approximatelyEqual(output,expectedOutput.reverseEndianness( usingTextbookConvention ));
     Util.assert( success, "Regression test failed "+'95b90f1b5d' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
     // Try simulating the same circuit, but this time without using explicit large matrices.
     output_method2 = Sim.qubitWiseMultiply(Sim.H,0,4,input,[]);
@@ -2625,7 +2625,7 @@ function performRegressionTest( verbose=true ) {
     ));
     success = CMatrix.approximatelyEqual(output,output_method2);
     Util.assert( success, "Regression test failed "+'95b90f1b5d_B' );
-    allSuccessful &= success;
+    allSuccessful &&= success;
 
 
 
