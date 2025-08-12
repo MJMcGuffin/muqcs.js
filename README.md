@@ -4,7 +4,7 @@ Muqcs (pronounced mucks) is McGuffin's Useless Quantum Circuit Simulator.  It is
 
 The code is contained entirely in a single file, and defines a small class for complex numbers, a class for complex matrices (i.e., matrices storing complex numbers), and a few utility classes like Sim (for Simulator).  These classes take up about 2000 lines of code.  The rest of the code consists of a regression test (in the function performRegressionTest()).  Having a relatively small amount of source code means that the code is easier to study and understand by others.
 
-Like Quirk, Muqcs supports quantum logic gates with arbitrary combinations of control and anti-control qubits.
+Like <a href="https://algassert.com/quirk">Quirk</a>, Muqcs supports quantum logic gates with arbitrary combinations of control and anti-control qubits.
 Unlike other javascript quantum circuit simulators, Muqcs also implements partial trace on arbitrary subsets of qubits to compute
 reduced density matrices, from which several statistics can be computed:
 the phase, probability, purity, linear entropy, von Neumann entropy (to quantify mixedness), and Bloch sphere coordinates of individual qubits;
