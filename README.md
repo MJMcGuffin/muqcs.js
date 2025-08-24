@@ -643,7 +643,19 @@ R_z(a) =  Z_G(-a/2,a/2)
 #### Identities:
 
 ```math
+X \cdot Z^{a/\pi} \cdot X \cdot Z^{b/\pi} = Z^{b/\pi} \cdot X \cdot Z^{a/\pi} \cdot X
+```
+
+```math
 Z_G(a,b) Z_G(c,d) = Z_G(a+c,b+d)
+```
+
+```math
+Z_G(a,b) = X \cdot Z_G(b,a) \cdot X
+```
+
+```math
+(Z_G(a,b))^{-1} = Z_G(-a,-b)
 ```
 
 ### Generalized Y
@@ -676,6 +688,10 @@ Y_G(a,b) Y_G(c,d) = Z_G(b+c,a+d)
 Y_G(a,b) Z_G(c,d) = Z_G(d,c) Y_G(a,b) = Y_G(a+c,b+d)
 ```
 
+```math
+(Y_G(a,b))^{-1} = Y_G(-b,-a)
+```
+
 ### Generalized Hadamard
 
 `Sim.H_G(angle1InDegrees, angle2InDegrees)`
@@ -692,11 +708,16 @@ H_G(a,b) = H \cdot Z_G(a,b) = \frac{1}{\sqrt{2}} \begin{bmatrix} e^{i a} & e^{i 
 H = H_G(0,0)
 ```
 
-#### Identity:
+#### Identities:
 
 ```math
 H_G(a,a) H_G(b,b) = Z_G(a+b,a+b)
 ```
+
+```math
+(H_G(a,b))^{-1} = Z_G(-a,-b) \cdot H
+```
+
 
 ## Example code for Mathematica / Wolfram Language / wolframcloud.com :
 
