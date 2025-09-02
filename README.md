@@ -30,19 +30,19 @@ $\newcommand{\mybraket}[2]{\langle #1|#2 \rangle}$
 $\newcommand{\myketbra}[2]{|#1 \rangle \langle #2|}$
 -->
 
-**Companion Video**
+## Companion Video
 
 [![video overview of Muqcs](/doc/video-thumbnail-2.png)](https://youtu.be/b6OqXkqPBeY)
 <br/>
 <a href="https://youtu.be/b6OqXkqPBeY">View the video</a>
 
 
-**Companion Paper**
+## Companion Paper
 
 A companion paper at <a href="https://arxiv.org/abs/2506.08142">https://arxiv.org/abs/2506.08142</a> explains background concepts and algorithms used in Muqcs.
 Please cite that paper if you would like to cite the Muqcs software in your own academic work.
 
-**Creating and Manipulating Matrices**
+## Creating and Manipulating Matrices
 
 To create some matrices and print out their contents, we can do
 
@@ -108,7 +108,7 @@ prints the 4×4 matrix for the CNOT gate in its more usual form:
     [_,_,_,1]
     [_,_,1,_]
 
-**Simulating a Quantum Circuit**
+## Simulating a Quantum Circuit
 
 To simulate a circuit, one approach is to compute an explicit matrix for each layer (or step or stage) of the circuit.  In a circuit with $n$ qubits, these matrices for each layer will have size $2^n \times 2^n$.  Consider this 3-qubit circuit with 4 layers:
 
@@ -301,7 +301,7 @@ and then call the computeSSREMagic() routine.
 See the comments preceding the definition of that routine in the source code for an example of how to call it.
 
 
-**Circuit and Qubit Statistics**
+## Circuit and Qubit Statistics
 
 Here we consider in more detail a particular circuit and the statistics that can be computed for it, and compare these to the output of IBM Quantum Composer and of Quirk, to provide convincing evidence that Muqcs correctly computes these statistics.
 
@@ -361,18 +361,18 @@ https://algassert.com/quirk#circuit=%7B%22cols%22%3A%5B%5B%7B%22id%22%3A%22Rxft%
 ![Qubit statistics in Quirk](/doc/qubit-stats-quirk.png)
 
 
-**Conventions**
+## Conventions
 
 In a circuit with N qubits, the wires are numbered 0 for the top wire to (N-1) for the bottom wire.  The top wire encodes the Least-Significant Bit (LSB).
 
-**Limitations**
+## Limitations
 
 There is currently no support for measurement gates.
 
 The code depends on <a href="https://mathjs.org/">mathjs</a>,
 but only in one subroutine (Sim.eigendecomposition()) which is used to compute concurrence and von Neumann entropy.
 
-**Background Notes**
+## Background Notes
 
 Think of bra ($\bra{a}$) as a row vector, and ket ($\ket{a}$) as a column vector equal to the conjugate transpose of the bra.
 Then, multiplying a bra by a ket yields a dot product (i.e., $(\bra{a})(\ket{b})$, abbreviated to $\braket{a|b}$, yields a 1×1 matrix);
@@ -439,6 +439,8 @@ Matrices encoding the effect of a quantum gate:
 |                | `Sim.SWAP_2`      | 2 | 4x4              |  |
 |                | `Sim.SWAP(i,j,n)` | 2 | $2^n \times 2^n$ |  |
 | CNOT, CX, XOR  | `Sim.CX`          | 2 | 4x4              |  |
+
+## Matrix Definitions
 
 zero, 0, `Sim.ZERO`
 ```math
@@ -598,7 +600,9 @@ $H^k$
 ```
 
 
-## Non-standard operations proposed by McGuffin
+## Generalized Gates
+
+These are non-standard operations proposed by McGuffin.
 
 ### Generalized Z
 
@@ -719,9 +723,9 @@ H_G(a,a) H_G(b,b) = Z_G(a+b,a+b)
 ```
 
 
-## Example code for Mathematica / Wolfram Language / wolframcloud.com :
+## Example code for Wolfram Language
 
-It's useful to be able to check matrix math using a symbolic math package like Mathematica.  Here is some code to get started:
+It's useful to be able to check matrix math using a symbolic math package like Mathematica or wolframcloud.com.  Here is some code to get started:
 
     (* identity *)
     (* id = {{1, 0}, {0, 1}}; *)
