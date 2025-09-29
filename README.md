@@ -334,9 +334,10 @@ Here is an example computing these statistics with muqcs:
 
 ![More qubit statistics in Muqcs](/doc/qubit-stats-muqcs-2.png)
 
-... and now the same circuit in <a href="https://quantum-computing.ibm.com/composer">IBM Quantum Composer</a>:
+<!-- previously https://quantum-computing.ibm.com/composer -->
+... and now the same circuit in <a href="https://quantum.cloud.ibm.com/composer">IBM Quantum Composer</a>:
 
-    // Copy-paste the below instructions into IBM’s website at https://quantum-computing.ibm.com/composer to recreate the circuit
+    // Copy-paste the below instructions into IBM’s website at https://quantum.cloud.ibm.com/composer to recreate the circuit
 
     OPENQASM 2.0;
     include "qelib1.inc";
