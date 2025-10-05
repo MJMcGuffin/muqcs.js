@@ -42,6 +42,12 @@ $\newcommand{\myketbra}[2]{|#1 \rangle \langle #2|}$
 A companion paper at <a href="https://arxiv.org/abs/2506.08142">https://arxiv.org/abs/2506.08142</a> explains background concepts and algorithms used in Muqcs.
 Please cite that paper if you would like to cite the Muqcs software in your own academic work.
 
+## Related Software
+
+After Muqcs and the companion paper were released, Thomas Trenty re-implemented and extended parts of it in Mojo <a href="https://github.com/ttrenty/QLabs">https://github.com/ttrenty/QLabs</a> , for a Pythonic syntax and much faster execution speed.
+
+<a href="https://profs.etsmtl.ca/mmcguffin/research/#mcguffin_2025_MuqcsCraft">MuqcsCraft</a> is a web-based graphical simulator and visualizer for quantum circuits, built on top of Muqcs.
+
 ## Creating and Manipulating Matrices
 
 To create some matrices and print out their contents, we can do
