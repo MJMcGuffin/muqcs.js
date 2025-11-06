@@ -11,7 +11,7 @@ the phase, probability, purity, linear entropy, von Neumann entropy (to quantify
 the concurrence (to quantify entanglement), correlation, purity, and von Neumann entropy of pairs of qubits;
 and the stabilizer Rényi entropy (to quantify magic) of a set of qubits.
 
-On my 2022 laptop, running inside Chrome, Muqcs can simulate circuits on N=20 qubits at a speed of less than 100ms per gate, and can also compute all N(N-1)/2 4×4 2-qubit partial traces and all N 2×2 1-qubit partial traces in under 22 seconds, all without ever computing any explicit $2^N \times 2^N$ matrices.
+On my 2022 laptop, running inside Chrome, Muqcs can simulate circuits on N=20 qubits (which involves updating a state vector of over 1 million amplitudes) in less than 100ms per gate, and can also compute all N(N-1)/2 4×4 2-qubit partial traces and all N 2×2 1-qubit partial traces in under 22 seconds, all without ever computing any explicit $2^N \times 2^N$ matrices.
 
 To run the code, <a href="https://mjmcguffin.github.io/muqcs.js/">load the html file</a> into a browser like Chrome, and then open a console (in Chrome, this is done by selecting 'Developer Tools').  From the console prompt, you can call functions in the code and see output printed to the console.
 
