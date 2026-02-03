@@ -1565,20 +1565,22 @@ class Sim { // Simulator
         }
     }
 
-    // Returns a matrix of size (n)x(n), whose upper triangular half contains correlation values for pairs of qubits.
-    // Each cell (row=i,column=j) of the matrix contains a real number in [-1,1] describing the correlation between qubits i,j
-    // (where i>j).
+    // Returns a matrix of size (n)x(n), whose upper triangular half contains correlation values
+    // for pairs of qubits.
+    // Each cell (row=i,column=j) of the matrix contains a real number in [-1,1]
+    // equal to the correlation between qubits i,j in the computational basis, where i > j.
     // The values -1, 0, +1 correspond to perfectly inverse correlation (i.e., when measured, qubits i,j always have opposite values),
     // uncorrelated, and perfectly positive correlation (i.e., when measured, the two qubits are always equal), respectively.
+    // If one of the qubits always yields the same result upon measurement, then correlation is not defined
+    // and the corresponding value in the returned matrix will be NaN.
     // The diagonal and lower triangular half of the returned matrix contain zeros.
     // 
     // 
-    // 
-    // How to compute the correlation between two qubits:
+    // To compute the correlation between two qubits, in the computational basis:
     // 
     // Consider two qubits X and Y, each of which is measured to have
     // a value of either L (for Low) or H (for High).
-    // (Later, we will consider (L,H)=(-1,+1) or (L,H)=(0,1).)
+    // (E.g., maybe (L,H)=(-1,+1) or (L,H)=(0,1).)
     // Define the four probabilities
     //     a = P((X,Y)=(L,L)) = P(X=L and Y=L)
     //     b = P((X,Y)=(L,H))
@@ -1586,89 +1588,19 @@ class Sim { // Simulator
     //     d = P((X,Y)=(H,H))
     // 
     // where a+b+c+d=1.
-    // https://en.wikipedia.org/wiki/Correlation
-    // explains that
-    // 
-    //     correlation(X,Y)
-    //       = covariance(X,Y) / (sigma_X sigma_Y)
-    //       = ( E(XY) - E(X)E(Y) ) / (sigma_X sigma_Y)
-    // 
-    // where sigma_X = sqrt(E(X^2) - E(X)^2)
-    // and similarly for sigma_Y.
-    // Thus
-    //     covariance(X,Y)
-    //       = E(XY) - E(X)E(Y)
-    //       = aLL + bLH + cHL + dHH - ((a+b)L+(c+d)H) ((a+c)L+(b+d)H)
-    //       = aLL+bLH+cHL+dHH - (aL+bL+cH+dH)(aL+cL+bH+dH)
-    //       = aLL+bLH+cHL+dHH - (aaLL+abLL+acLL+bcLL + abLH+acLH+2adLH+bbLH+bdLH+ccLH+cdLH + bcHH+bdHH+cdHH+ddHH)
-    // 
-    // If we set (L,H)=(-1,+1), then sigma_X = sigma_Y = 1,
-    // and
-    //     covariance(X,Y)
-    //       = a-b-c+d - (aa+ab+ac+bc - ab-ac-2ad-bb-bd-cc-cd + bc+bd+cd+dd)
-    //       = a-b-c+d - (aa+2bc -2ad-bb-cc +dd)
-    //       = a+d-b-c - (aa+dd+2bc-2ad-bb-cc)
-    //     correlation(X,Y)
-    //       = a+d-b-c - (aa+dd+2bc-2ad-bb-cc)
-    // Recall that a=1-b-c-d. Substituting, we find
-    //     correlation(X,Y)
-    //       = (1-b-c-d)+d-b-c - ((1-b-c-d)^2+dd+2bc-2(1-b-c-d)d-bb-cc)
-    //       = 1-2b-2c - ((1-b-c-d)^2+dd+2bc -2(d-bd-cd-dd) -bb-cc)
-    //       = 1-2b-2c+2d +bb-2bc-2bd+cc-2cd-3dd - ((1-b-c-d)^2) 
-    //       = 1-2b-2c+2d +bb-2bc-2bd+cc-2cd-3dd - (1-2b-2c-2d+bb+2bc+2bd+cc+2cd+dd)
-    //       = 4d -4bc-4bd-4cd-4dd
-    //       = 4(d-bd-cd-dd -bc)
-    //       = 4((1-b-c-d)d -bc)
-    //       = 4(ad-bc)    [1]
-    // 
-    // As a sanity check, set (L,H)=(0,1),
-    // then sigma_X = sigma_Y = sqrt(0.5-0.5^2)=0.5,
-    // and
-    //     covariance(X,Y) = d - (bc+bd+cd+dd)
-    //     correlation(X,Y)
-    //       = (d - (bc+bd+cd+dd))/(0.5 0.5)
-    //       = 4 (d - (bc+bd+cd+dd))
-    //       = 4 (d - dd - bc - bd - cd)
-    //       = 4( d - bc - (b+c+d)d )
-    //       = 4( d - bc - (1-a)d )
-    //       = 4( ad - bc )   [2]
-    // We see that equation [2] is equivalent to [1].
-    // 
-    // As another sanity check, consider
-    // the symmetrical situation
-    // a=d and b=c, and define p=a=d.
-    // Then b=c=0.5-p, and [2] yields
-    //     correlation(X,Y)
-    //       = 4( p^2 - (0.5-p)^2 )
-    //       = 4( p^2 - 0.25+p-p^2 )
-    //       = 4( -0.25+p )
-    //       = 4p - 1
-    // which yields -1,0,1, for p=0,0.25,0.5, respectively,
-    // as expected.
-    // 
-    // As another sanity check, consider
-    // the case b=c=0 (hence a+d=1).
-    // Then [2] yields
-    //     correlation(X,Y)
-    //       = 4ad
-    // which reaches a maximum of 1 when a=d=0.5.
-    // Alternatively, consider the case a=d=0
-    // (hence b+c=1), then [2] yields
-    //     correlation(X,Y) = -4bc
-    // which has a minimum of -1 when b=c=0.5
-    // 
-    // As another sanity check, consider the case
-    // where X and Y are independent, with
-    // probabilities
-    //     p = P(X=H)
-    //     q = P(Y=H)
-    // Then P(X=L)=(1-p), P(Y=L)=(1-q),
-    // a=(1-p)(1-q), b=(1-p)q, c=p(1-q), d=pq,
-    // and we find
-    //     correlation(X,Y)
-    //       = 4( (1-p)(1-q)pq - (1-p)qp(1-q) )
-    //       = 0
-    // as expected.
+    // It can be shown that the covariance between the two qubits is
+    //     (H-L)^2 (ad-bc)    bounded by ±(1/4)(H-L)^2
+    // and the correlation is
+    //     (ad-bc) / sqrt( (a+b)(c+d)(a+c)(b+d) )   bounded by ±1
+    // Sanity checks:
+    //     If b=c=0, correlation is 1 (except if there is division by zero)
+    //     If a=d=0, correlation is -1 (except if there is division by zero)
+    //     If a=d and b=c, correlation is 4(a^2-(1/2-a)^2)= 4a-1 = 1-4b
+    //        which yields -1,0,1 for a=0,0.25,0.5, respectively.
+    //     If the two qubits are independent, where the first is H with probability p
+    //        and the second is H with probability q,
+    //        then a=(1-p)(1-q), b=(1-p)q, c=p(1-q), d=pq,
+    //        correlation = 0 (except if there is division by zero)
     // 
     static computePairwiseQubitCorrelations(
         n, // number of qubits in the circuit
@@ -1693,7 +1625,15 @@ class Sim { // Simulator
                     let bit_j = (k>>j) & 1;
                     p[ bit_i ][ bit_j ] += baseStateProbabilities.get(k,0)._r;
                 }
-                let correlation = 4*( p[0][0]*p[1][1] - p[0][1]*p[1][0] );
+                let a = p[0][0];
+                let b = p[0][1];
+                let c = p[1][0];
+                let d = p[1][1];
+                let correlation = NaN;
+                let denominator = (a+b)*(c+d)*(a+c)*(b+d);
+                if ( denominator > 0 ) {
+                    correlation = ( a*d - b*c ) / Math.sqrt( denominator );
+                }
                 result.set( i, j, correlation );
                 //console.log(`${i},${j}: `+StringUtil.numToString(p[0][0])+"+"+StringUtil.numToString(p[0][1])+"+"+StringUtil.numToString(p[1][0])+"+"+StringUtil.numToString(p[1][1])+"="+StringUtil.numToString(p[0][0]+p[0][1]+p[1][0]+p[1][1])+", diff="+StringUtil.numToString(correlation));
             }
