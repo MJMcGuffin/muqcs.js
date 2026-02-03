@@ -1635,7 +1635,7 @@ class Sim { // Simulator
                     correlation = ( a*d - b*c ) / Math.sqrt( denominator );
                 }
                 result.set( i, j, correlation );
-                //console.log(`${i},${j}: `+StringUtil.numToString(p[0][0])+"+"+StringUtil.numToString(p[0][1])+"+"+StringUtil.numToString(p[1][0])+"+"+StringUtil.numToString(p[1][1])+"="+StringUtil.numToString(p[0][0]+p[0][1]+p[1][0]+p[1][1])+", diff="+StringUtil.numToString(correlation));
+                //console.log(`${i},${j}: `+StringUtil.numToString(p[0][0])+"+"+StringUtil.numToString(p[0][1])+"+"+StringUtil.numToString(p[1][0])+"+"+StringUtil.numToString(p[1][1])+"="+StringUtil.numToString(p[0][0]+p[0][1]+p[1][0]+p[1][1])+", corr="+StringUtil.numToString(correlation));
             }
         }
         //console.log("Pairwise correlations appear in upper triangular half:\n" + result.toString());
