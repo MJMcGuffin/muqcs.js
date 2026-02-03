@@ -510,7 +510,7 @@ class CMatrix {
         }
         else Util.assert(false,"CMatrix.mult(): unknown type");
     }
-    // The Kronecker product of two matrices.
+    // The Kronecker product (often informally called the tensor product) of two matrices.
     static kron(a,b,isReversed=false) {
         Util.assert(a instanceof CMatrix && b instanceof CMatrix,"CMatrix.kron(): wrong type");
         if ( isReversed ) {
