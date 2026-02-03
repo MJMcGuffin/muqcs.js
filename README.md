@@ -82,7 +82,7 @@ which produces this output:
     [10,20] + [1i  ,2+3i ] = [10+1i,22+3i]
     [30,40]   [5+7i,-1-3i]   [35+7i,39-3i]
 
-Similarly, there are static methods in the CMatrix class for subtracting matrices (diff(m1,m2)), multiplying matrices (mult(m1,m2) and naryMult([m1,m2,...])), and for computing their tensor product (tensor(m1,m2) and naryTensor([m1,m2,...])).
+Similarly, there are static methods in the CMatrix class for subtracting matrices (diff(m1,m2)), multiplying matrices (mult(m1,m2) and naryMult([m1,m2,...])), and for computing their Kronecker product (kron(m1,m2) and naryKron([m1,m2,...])).
 There are also some predefined vectors and matrices.  For example,
 
     console.log(Sim.ketOne.toString());
@@ -103,7 +103,7 @@ prints the 4×4 matrix for the CNOT (also called CX) gate:
     [_,_,1,_]
     [_,1,_,_]
 
-Notice that zeros are replaced with underscores to make it easier for a human to read sparse matrices - a form of pretty printing (to change this behavior, you can call toString({suppressZeros:false}) or toString({charToReplaceSuppressedZero:'.'})).  You might also notice that the matrix for the CNOT gate looks different from the way it is usually presented in textbooks or other sources.  This is related to the ordering of bits and ordering of tensor products.  Search for the usingTextbookConvention flag in the source code for comments that explain this, and set that flag to true if you prefer the textbook ordering.  We can also call a method on a matrix (or a vector) to change its ordering:
+Notice that zeros are replaced with underscores to make it easier for a human to read sparse matrices - a form of pretty printing (to change this behavior, you can call toString({suppressZeros:false}) or toString({charToReplaceSuppressedZero:'.'})).  You might also notice that the matrix for the CNOT gate looks different from the way it is usually presented in textbooks or other sources.  This is related to the ordering of bits and ordering of Kronecker products.  Search for the usingTextbookConvention flag in the source code for comments that explain this, and set that flag to true if you prefer the textbook ordering.  We can also call a method on a matrix (or a vector) to change its ordering:
 
     console.log(Sim.CX.reverseEndianness().toString());
 
@@ -120,21 +120,21 @@ To simulate a circuit, one approach is to compute an explicit matrix for each la
 
 ![Example circuit 1](/doc/exampleCircuit-1.png)
 
-The input state vector $\ket{\psi_0}$ is an $8 \times 1$ column vector, computed as the tensor product
+The input state vector $\ket{\psi_0}$ is an $8 \times 1$ column vector, computed as the Kronecker product
 $\ket{\psi_0}$ = $\ket{0}$ $\otimes$ $\ket{0}$ $\otimes$ $\ket{0}$ = $\ket{000}$ = $\ket{0}^{\otimes 3}$,
 which can be computed in any of the following ways:
 
-    psi_0 = CMatrix.tensor( Sim.ketZero, CMatrix.tensor( Sim.ketZero, Sim.ketZero ) );
+    psi_0 = CMatrix.kron( Sim.ketZero, CMatrix.kron( Sim.ketZero, Sim.ketZero ) );
     console.log( psi_0.toString() );
-    psi_0 = CMatrix.naryTensor( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
+    psi_0 = CMatrix.naryKron( [ Sim.ketZero /*q2*/, Sim.ketZero /*q1*/, Sim.ketZero /*q0*/ ] );
     console.log( psi_0.toString() );
-    psi_0 = CMatrix.tensorPower( Sim.ketZero, 3 );
+    psi_0 = CMatrix.kronPower( Sim.ketZero, 3 );
     console.log( psi_0.toString() );
 
 The quantum logic gates for $X$, $Z$, and $H$ each correspond to particular $2 \times 2$ matrices.
-The $8 \times 8$ matrix $L_1$ is computed as the tensor product $L_1 = X \otimes H \otimes I$, where $I$ is the $2 \times 2$ identity matrix.  In code, we can do
+The $8 \times 8$ matrix $L_1$ is computed as the Kronecker product $L_1 = X \otimes H \otimes I$, where $I$ is the $2 \times 2$ identity matrix.  In code, we can do
 
-    let L_1 = CMatrix.naryTensor( [ Sim.X, Sim.H, Sim.I ] ); // these are ordered q2, q1, q0
+    let L_1 = CMatrix.naryKron( [ Sim.X, Sim.H, Sim.I ] ); // these are ordered q2, q1, q0
     console.log( L_1.toString() );
 
 Layers 2 and 4 involve gates with control bits.
@@ -145,13 +145,13 @@ Here is how we could compute the $8 \times 8$ matrix for each layer and compute 
     // View this circuit in Quirk with
     //   https://algassert.com/quirk#circuit={%22cols%22:[[1,%22H%22,%22X%22],[%22X%22,%22%E2%80%A2%22],[%22Z%22],[1,%22%E2%80%A2%22,%22X%22]]}
     let n = 3; // number of qubits
-    let psi_0 = CMatrix.tensorPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
-    let L_1 = CMatrix.naryTensor( [ Sim.X, Sim.H, Sim.I ] );
-    let L_2 = CMatrix.tensor( Sim.I, Sim.CX.reverseEndianness() );
+    let psi_0 = CMatrix.kronPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
+    let L_1 = CMatrix.naryKron( [ Sim.X, Sim.H, Sim.I ] );
+    let L_2 = CMatrix.kron( Sim.I, Sim.CX.reverseEndianness() );
     // This would also work:
     // let L_2 = Sim.expand4x4ForNWires( Sim.CX, 1, 0, n );
-    let L_3 = CMatrix.naryTensor( [ Sim.I, Sim.I, Sim.Z ] );
-    let L_4 = CMatrix.tensor( Sim.CX, Sim.I );
+    let L_3 = CMatrix.naryKron( [ Sim.I, Sim.I, Sim.Z ] );
+    let L_4 = CMatrix.kron( Sim.CX, Sim.I );
     // This would also work:
     // let L_4 = Sim.expand4x4ForNWires( Sim.CX, 1, 2, n );
     let psi_f = CMatrix.naryMult( [ L_4, L_3, L_2, L_1, psi_0 ] );
@@ -186,7 +186,7 @@ The output of the above code is:
 A second approach to simulating the same circuit is to not compute any explicit matrices of size $2^N \times 2^N$.  Instead, we only store the state vector of size $2^N \times 1$, and update it for each layer of the circuit, using qubit-wise multiplication.  The following code does this:
 
     let n = 3; // number of qubits
-    let psi_0 = CMatrix.tensorPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
+    let psi_0 = CMatrix.kronPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
     let step1 = Sim.qubitWiseMultiply(Sim.H,1,n,psi_0);
     step1 = Sim.qubitWiseMultiply(Sim.X,2,n,step1);
     let step2 = Sim.qubitWiseMultiply(Sim.X,0,n,step1,[[1,true]] /*one control bit on wire 1*/ );
@@ -221,7 +221,7 @@ We can compute its output with this:
     // View this circuit in Quirk with
     //   https://algassert.com/quirk#circuit={%22cols%22:[[%22H%22],[%22Swap%22,1,%22Swap%22],[1,%22X%22,%22%E2%97%A6%22],[%22X%22,%22%E2%80%A2%22],[%22Y%22],[%22%E2%80%A2%22,%22Swap%22,%22Swap%22],[1,%22Z%22]]}
     n = 3; // number of qubits
-    let ψ = CMatrix.tensorPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
+    let ψ = CMatrix.kronPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
     ψ = Sim.qubitWiseMultiply(Sim.H,0,n,ψ);
     ψ = Sim.applySwap(0,2,n,ψ);
     ψ = Sim.qubitWiseMultiply(Sim.X,1,n,ψ,[[2,false]] /*one anti-control bit on wire 2*/ );
@@ -241,7 +241,7 @@ To simulate this circuit...
     // View this circuit in Quirk with
     //   https://algassert.com/quirk#circuit={%22cols%22:[[%22H%22,1,%22H%22],[%22%E2%80%A2%22,%22X%22]]}
     n = 3; // number of qubits
-    let ψ = CMatrix.tensorPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
+    let ψ = CMatrix.kronPower(Sim.ketZero,n); // initialization: ψ = |0> ⊗ |0> ⊗ |0> = |0>^(⊗3)
     ψ = Sim.qubitWiseMultiply(Sim.H,0,n,ψ);
     ψ = Sim.qubitWiseMultiply(Sim.H,2,n,ψ);
     ψ = Sim.qubitWiseMultiply(Sim.X,1,n,ψ,[[0,true]] /*one control bit on wire 0*/ );
@@ -321,10 +321,10 @@ The purity for a single qubit varies from 0.5 to 1.0 and indicates how entangled
 Here is an example computing these statistics with muqcs:
 
     let N = 4; // total qubits
-    input = CMatrix.tensorPower(Sim.ketZero,N);
-    step1 = CMatrix.naryTensor( [ Sim.RY(45) /*q3*/, Sim.RX_90deg /*q2*/,
+    input = CMatrix.kronPower(Sim.ketZero,N);
+    step1 = CMatrix.naryKron( [ Sim.RY(45) /*q3*/, Sim.RX_90deg /*q2*/,
                                   Sim.RX_90deg /*q1*/, Sim.RX(45) /*q0*/ ] );
-    step2 = CMatrix.naryTensor( [ Sim.RX(45) /*q3*/, Sim.RZ(120) /*q2*/,
+    step2 = CMatrix.naryKron( [ Sim.RX(45) /*q3*/, Sim.RZ(120) /*q2*/,
                                   Sim.RZ(100) /*q1*/, Sim.I /*q0*/ ] );
     output = CMatrix.naryMult([ step2, step1, input ]);
     output = Sim.qubitWiseMultiply(Sim.RZ_90deg,2,N,output,[[1,true]]/*list of control qubits*/);
